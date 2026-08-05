@@ -1,0 +1,6 @@
+{
+  "name": "Gestão de Clientes – Nduwa Kayongo",
+  "description": "Gestão Inteligente da Carteira de Crédito",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
