@@ -27,6 +27,9 @@ interface ClienteDao {
     @Delete
     suspend fun deleteCliente(cliente: ClienteEntity)
 
+    @Query("DELETE FROM clientes")
+    suspend fun deleteAllClientes()
+
     @Query("SELECT COUNT(*) FROM clientes")
     fun getCountClientesFlow(): Flow<Int>
 }
@@ -53,6 +56,9 @@ interface CreditoDao {
 
     @Delete
     suspend fun deleteCredito(credito: CreditoEntity)
+
+    @Query("DELETE FROM creditos")
+    suspend fun deleteAllCreditos()
 }
 
 @Dao
@@ -68,6 +74,9 @@ interface PagamentoDao {
 
     @Delete
     suspend fun deletePagamento(pagamento: PagamentoEntity)
+
+    @Query("DELETE FROM pagamentos")
+    suspend fun deleteAllPagamentos()
 }
 
 @Dao
@@ -80,6 +89,9 @@ interface CobrancaDao {
 
     @Delete
     suspend fun deleteCobranca(cobranca: CobrancaEntity)
+
+    @Query("DELETE FROM cobrancas")
+    suspend fun deleteAllCobrancas()
 }
 
 @Dao

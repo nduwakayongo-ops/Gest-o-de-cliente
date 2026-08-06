@@ -417,11 +417,43 @@ fun VisaoGeralTab(cliente: ClienteEntity, credito: CreditoEntity?) {
                     DetailRow("Prestação Mensal", KwanzaFormatters.formatAOA(credito?.prestacaoMensal ?: 0.0), isBold = true)
                     DetailRow("Prestações Pagas / Total", "${credito?.prestacoesPagas ?: 0} / ${credito?.quantidadePrestacoes ?: 0}")
                     DetailRow("Data do Desembolso", KwanzaFormatters.formatDate(credito?.dataDesembolso ?: 0L))
+                    DetailRow("Início do Reembolso", KwanzaFormatters.formatDate(credito?.dataPrimeiroPagamento ?: 0L))
+                    DetailRow("Fim do Reembolso", KwanzaFormatters.formatDate(credito?.dataUltimoPagamento ?: 0L))
                     DetailRow("Próximo Vencimento", KwanzaFormatters.formatDate(credito?.proximoVencimento ?: 0L))
                     DetailRow("Estado do Crédito", credito?.estado ?: "N/A", isStatus = true)
                     if ((credito?.diasEmAtraso ?: 0) > 0) {
                         DetailRow("Valor em Atraso", KwanzaFormatters.formatAOA(credito?.valorEmAtraso ?: 0.0), color = WarningRed)
                         DetailRow("Dias em Atraso", "${credito?.diasEmAtraso} dias", color = WarningRed)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (credito?.estado == "Liquidado") ForestGreen.copy(alpha = 0.1f) else AccentGold.copy(alpha = 0.15f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (credito?.estado == "Liquidado") Icons.Default.CheckCircle else Icons.Default.NotificationsActive,
+                                contentDescription = null,
+                                tint = if (credito?.estado == "Liquidado") ForestGreen else DeepBlue,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (credito?.estado == "Liquidado")
+                                    "✅ Crédito totalmente liquidado! Os lembretes automáticos foram concluídos com sucesso."
+                                else
+                                    "🔔 Lembretes automáticos ativos acompanhando de ${KwanzaFormatters.formatDate(credito?.dataPrimeiroPagamento ?: 0L)} até ${KwanzaFormatters.formatDate(credito?.dataUltimoPagamento ?: 0L)} até a confirmação total do pagamento.",
+                                fontSize = 11.sp,
+                                color = DeepBlue,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }

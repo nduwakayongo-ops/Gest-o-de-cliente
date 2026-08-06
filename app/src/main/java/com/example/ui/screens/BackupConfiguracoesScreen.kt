@@ -44,7 +44,9 @@ import com.example.util.BiometricHelper
 @Composable
 fun BackupConfiguracoesScreen(
     configuracao: ConfiguracaoEntity?,
-    onSaveConfiguracao: (ConfiguracaoEntity) -> Unit
+    isInternetConnected: Boolean = true,
+    onSaveConfiguracao: (ConfiguracaoEntity) -> Unit,
+    onZerarSistema: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -56,6 +58,7 @@ fun BackupConfiguracoesScreen(
     var diasAntecedencia by remember(currentConfig) { mutableIntStateOf(currentConfig.diasAntecedenciaNotificacao) }
     var temaSelected by remember(currentConfig) { mutableStateOf(currentConfig.tema) }
     var backupAutomatico by remember(currentConfig) { mutableStateOf(currentConfig.backupAutomatico) }
+    var showZerarDialog by remember { mutableStateOf(false) }
 
     val profilePhotoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -304,7 +307,34 @@ fun BackupConfiguracoesScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Backup, contentDescription = null, tint = DeepBlue)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("☁ Backup e Restauração", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = DeepBlue)
+                    Text("☁ Backup Automático Online & Restauração", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = DeepBlue)
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isInternetConnected) LightGreen else WarningRedLight.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (isInternetConnected) ForestGreen else WarningRed,
+                            modifier = Modifier.size(10.dp)
+                        ) {}
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isInternetConnected)
+                                "Conectado à Internet • Backup automático ativo a cada alteração"
+                            else
+                                "Sem conexão à internet • Backup pendente até conectar",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isInternetConnected) ForestGreen else WarningRed
+                        )
+                    }
                 }
 
                 Row(
@@ -312,7 +342,7 @@ fun BackupConfiguracoesScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Backup Automático (Google Drive)", fontSize = 13.sp)
+                    Text("Backup Automático ao Estar Conectado", fontSize = 13.sp)
                     Switch(
                         checked = backupAutomatico,
                         onCheckedChange = { backupAutomatico = it },
@@ -347,7 +377,49 @@ fun BackupConfiguracoesScreen(
                         Text("Restaurar Backup", fontSize = 11.sp)
                     }
                 }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Reset System / Clear Data Section
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("🗑 Limpeza & Reinício de Banco de Dados", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = WarningRed)
+                    Text("Remove todos os dados simulados/antigos e mantêm apenas os cadastros inseridos pelo gestor.", fontSize = 11.sp, color = GrayText)
+
+                    OutlinedButton(
+                        onClick = { showZerarDialog = true },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = WarningRed),
+                        border = ButtonDefaults.outlinedButtonBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(WarningRed)),
+                        modifier = Modifier.fillMaxWidth().testTag("btn_zerar_sistema")
+                    ) {
+                        Text("Zerar Sistema (Salvar Apenas Dados do Gestor)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
+        }
+
+        if (showZerarDialog) {
+            AlertDialog(
+                onDismissRequest = { showZerarDialog = false },
+                title = { Text("Zerar Dados do Sistema?", fontWeight = FontWeight.Bold) },
+                text = { Text("Esta ação irá limpar os registos antigos e manter apenas os novos dados que forem adicionados por você (gestor). Deseja continuar?") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showZerarDialog = false
+                            onZerarSistema()
+                            Toast.makeText(context, "Sistema zerado! Apenas os dados inseridos por você serão salvos.", Toast.LENGTH_LONG).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = WarningRed)
+                    ) {
+                        Text("Sim, Zerar Tudo")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showZerarDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
 
         // Save Config Button

@@ -78,8 +78,8 @@ fun HeaderBranding(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        Image(
-                            painter = painterResource(id = R.drawable.nduwa_photo),
+                        AsyncImage(
+                            model = R.drawable.nduwa_photo,
                             contentDescription = "Foto de Nduwa Kayongo",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()

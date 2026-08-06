@@ -55,12 +55,23 @@ class CarteiraRepository(
             val novoEstado = if (novasPagas >= credito.quantidadePrestacoes) "Liquidado" else credito.estado
             val novoAtrasoVal = if (novoEstado == "Liquidado") 0.0 else (credito.valorEmAtraso - pagamento.valorPago).coerceAtLeast(0.0)
             val novoAtrasoDias = if (novoAtrasoVal <= 0.0) 0 else credito.diasEmAtraso
+            
+            val novoProximoVencimento = if (novoEstado == "Liquidado") 0L else {
+                val currentBase = if (credito.proximoVencimento > 0) credito.proximoVencimento else credito.dataPrimeiroPagamento
+                val cal = Calendar.getInstance().apply {
+                    timeInMillis = currentBase
+                    add(Calendar.MONTH, 1)
+                }
+                cal.timeInMillis
+            }
+
             creditoDao.updateCredito(
                 credito.copy(
                     prestacoesPagas = novasPagas,
                     estado = novoEstado,
                     valorEmAtraso = novoAtrasoVal,
-                    diasEmAtraso = novoAtrasoDias
+                    diasEmAtraso = novoAtrasoDias,
+                    proximoVencimento = novoProximoVencimento
                 )
             )
         }
@@ -71,6 +82,13 @@ class CarteiraRepository(
     suspend fun deletePagamento(pagamento: PagamentoEntity) = pagamentoDao.deletePagamento(pagamento)
     suspend fun deleteCobranca(cobranca: CobrancaEntity) = cobrancaDao.deleteCobranca(cobranca)
     suspend fun updateConfiguracao(config: ConfiguracaoEntity) = configuracaoDao.insertOrUpdateConfiguracao(config)
+
+    suspend fun zerarSistema() {
+        clienteDao.deleteAllClientes()
+        creditoDao.deleteAllCreditos()
+        pagamentoDao.deleteAllPagamentos()
+        cobrancaDao.deleteAllCobrancas()
+    }
 
     val dashboardSummary: Flow<DashboardSummary> = combine(
         clienteDao.getAllClientesFlow(),
@@ -111,17 +129,17 @@ class CarteiraRepository(
         val notificacoesCount = clientesEmAtrasoCount + prestacoesVencendoCount
 
         DashboardSummary(
-            carteiraAtiva = if (carteiraAtiva == 0.0 && totalClientes > 0) 18230550.0 else carteiraAtiva,
-            totalClientes = if (totalClientes == 0) 152 else totalClientes,
+            carteiraAtiva = carteiraAtiva,
+            totalClientes = totalClientes,
             clientesAtivosCount = clientesAtivosCount,
             clientesLiquidadosCount = clientesLiquidadosCount,
             clientesEmAtrasoCount = clientesEmAtrasoCount,
-            totalDesembolsado = if (totalDesembolsado == 0.0 && totalClientes > 0) 23500000.0 else totalDesembolsado,
-            totalRecuperado = if (totalRecuperado == 0.0 && totalClientes > 0) 5269450.0 else totalRecuperado,
-            valorEmAtraso = if (valorEmAtraso == 0.0 && totalClientes > 0) 1975120.0 else valorEmAtraso,
-            riscoPercentual = if (riscoPercentual == 0.0 && totalClientes > 0) 10.83 else riscoPercentual,
-            prestacoesVencendoCount = if (prestacoesVencendoCount == 0 && totalClientes > 0) 6 else prestacoesVencendoCount,
-            notificacoesCount = if (notificacoesCount == 0 && totalClientes > 0) 4 else notificacoesCount
+            totalDesembolsado = totalDesembolsado,
+            totalRecuperado = totalRecuperado,
+            valorEmAtraso = valorEmAtraso,
+            riscoPercentual = riscoPercentual,
+            prestacoesVencendoCount = prestacoesVencendoCount,
+            notificacoesCount = notificacoesCount
         )
     }
 }

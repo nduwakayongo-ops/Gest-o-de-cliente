@@ -13,6 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Save
@@ -23,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,19 +69,48 @@ fun AddEditClienteScreen(
     var salarioText by remember(clienteToEdit) { mutableStateOf(clienteToEdit?.salario?.toInt()?.toString() ?: "300000") }
     var observacoes by remember(clienteToEdit) { mutableStateOf(clienteToEdit?.observacoes ?: "") }
 
+    val context = LocalContext.current
+
     // Credit Fields
     var valorDesembolsadoText by remember(creditoToEdit) { mutableStateOf(creditoToEdit?.valorDesembolsado?.toInt()?.toString() ?: "1500000") }
     var taxaText by remember(creditoToEdit) { mutableStateOf(creditoToEdit?.taxaPercentual?.toInt()?.toString() ?: "5") }
     var qtdPrestacoesText by remember(creditoToEdit) { mutableStateOf(creditoToEdit?.quantidadePrestacoes?.toString() ?: "18") }
     var diasCreditoText by remember(creditoToEdit) { mutableStateOf("540") }
+    var selectedTipoJuros by remember { mutableStateOf(com.example.ui.viewmodel.TipoCalculoJuros.COMPOSTO_PRICE) }
+    var showSchedulePreview by remember { mutableStateOf(false) }
+
+    val now = System.currentTimeMillis()
+    val defaultStartCal = Calendar.getInstance().apply {
+        timeInMillis = now
+        add(Calendar.MONTH, 1)
+    }
+    val initialStartDate = creditoToEdit?.dataPrimeiroPagamento?.takeIf { it > 0 } ?: defaultStartCal.timeInMillis
+    var dataInicioReembolso by remember(creditoToEdit) { mutableLongStateOf(initialStartDate) }
+
+    val initialEndDate = creditoToEdit?.dataUltimoPagamento?.takeIf { it > 0 } ?: Calendar.getInstance().apply {
+        timeInMillis = initialStartDate
+        add(Calendar.MONTH, creditoToEdit?.quantidadePrestacoes ?: 18)
+    }.timeInMillis
+    var dataFimReembolso by remember(creditoToEdit) { mutableLongStateOf(initialEndDate) }
 
     val valorDesembolsado = valorDesembolsadoText.toDoubleOrNull() ?: 0.0
     val taxaPercentual = taxaText.toDoubleOrNull() ?: 0.0
-    val qtdPrestacoes = qtdPrestacoesText.toIntOrNull() ?: 12
+    val qtdPrestacoes = (qtdPrestacoesText.toIntOrNull() ?: 12).coerceAtLeast(1)
+
+    val simState = remember(valorDesembolsado, taxaPercentual, qtdPrestacoes, selectedTipoJuros) {
+        com.example.ui.viewmodel.CalculadoraViewModel.calcularSaldoDevedorEParcelas(
+            principal = valorDesembolsado,
+            taxaPercentual = taxaPercentual,
+            prazoMeses = qtdPrestacoes,
+            parcelasPagas = creditoToEdit?.prestacoesPagas ?: 0,
+            tipo = selectedTipoJuros
+        )
+    }
 
     val valorLiquido = (valorDesembolsado * (1.0 - (taxaPercentual / 100.0))).coerceAtLeast(0.0)
-    val valorJuros = valorDesembolsado * (taxaPercentual / 100.0)
-    val prestacaoMensal = if (qtdPrestacoes > 0) (valorDesembolsado + valorJuros) / qtdPrestacoes else 0.0
+    val valorJuros = simState.valorJurosTotal
+    val prestacaoMensal = simState.prestacaoMensal
+    val totalALiquidar = simState.valorTotalLiquidar
 
     val banksList = listOf("BPC", "BAI", "BFA", "Banco Económico", "SOL", "Banco Atlântico", "BIC", "BCI", "KEVE", "Standard Bank", "YETU", "Caixa Tota", "Outro")
 
@@ -338,18 +371,181 @@ fun AddEditClienteScreen(
                         )
                     }
 
-                    // Calculation Summary Card
+                    Text("Modelo de Cálculo de Juros:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        com.example.ui.viewmodel.TipoCalculoJuros.values().forEach { tipo ->
+                            FilterChip(
+                                selected = selectedTipoJuros == tipo,
+                                onClick = { selectedTipoJuros = tipo },
+                                label = { Text(tipo.label.split(" ")[0], fontSize = 11.sp) }
+                            )
+                        }
+                    }
+
+                    // Calculation Summary Card with Live Simulation
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = LightGreen,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Cálculo Automático do Crédito", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ForestGreen)
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("⚡ Simulação Automática de Juros", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ForestGreen)
+                                Surface(shape = RoundedCornerShape(6.dp), color = ForestGreen, contentColor = Color.White) {
+                                    Text("Ativa", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("• Valor Desembolsado: ${KwanzaFormatters.formatAOA(valorDesembolsado)}", fontSize = 12.sp)
+                            Text("• Valor Líquido do Cliente: ${KwanzaFormatters.formatAOA(valorLiquido)}", fontSize = 12.sp)
+                            Text("• Juros Totais Calculados: ${KwanzaFormatters.formatAOA(valorJuros)}", fontSize = 12.sp, color = DarkGold, fontWeight = FontWeight.SemiBold)
+                            Text("• Total Saldo Devedor a Liquidar: ${KwanzaFormatters.formatAOA(totalALiquidar)}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("Valor Líquido: ${KwanzaFormatters.formatAOA(valorLiquido)}", fontSize = 12.sp)
-                            Text("Juros Total: ${KwanzaFormatters.formatAOA(valorJuros)}", fontSize = 12.sp)
-                            Text("Prestação Mensal: ${KwanzaFormatters.formatAOA(prestacaoMensal)}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DeepBlue)
+                            Text("• Prestação Mensal Recomendada: ${KwanzaFormatters.formatAOA(prestacaoMensal)}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DeepBlue)
+
+                            Spacer(modifier = Modifier.height(6.dp))
+                            TextButton(
+                                onClick = { showSchedulePreview = !showSchedulePreview },
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(if (showSchedulePreview) "Ocultar Prévia de Parcelas" else "👁 Simular Tabela de Parcelas", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DeepBlue)
+                            }
+
+                            if (showSchedulePreview && simState.cronograma.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    simState.cronograma.take(6).forEach { item ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text("Parcela #${item.numeroParcela}", fontSize = 11.sp)
+                                            Text("${KwanzaFormatters.formatAOA(item.valorPrestacao)} (Rest: ${KwanzaFormatters.formatAOA(item.saldoDevedorRestante)})", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
+                                    if (simState.cronograma.size > 6) {
+                                        Text("+ mais ${simState.cronograma.size - 6} parcelas...", fontSize = 10.sp, color = GrayText)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Section 3.1: Datas do Reembolso
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = GrayBackground),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = DeepBlue, modifier = Modifier.size(18.dp))
+                                Text("📅 Datas do Reembolso (Início e Fim)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DeepBlue)
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                // Data Inicio Reembolso
+                                OutlinedCard(
+                                    onClick = {
+                                        val cal = Calendar.getInstance().apply { timeInMillis = dataInicioReembolso }
+                                        android.app.DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selCal = Calendar.getInstance().apply {
+                                                    set(Calendar.YEAR, year)
+                                                    set(Calendar.MONTH, month)
+                                                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                                    set(Calendar.HOUR_OF_DAY, 8)
+                                                }
+                                                dataInicioReembolso = selCal.timeInMillis
+                                                val endCal = Calendar.getInstance().apply {
+                                                    timeInMillis = selCal.timeInMillis
+                                                    add(Calendar.MONTH, qtdPrestacoes)
+                                                }
+                                                dataFimReembolso = endCal.timeInMillis
+                                            },
+                                            cal.get(Calendar.YEAR),
+                                            cal.get(Calendar.MONTH),
+                                            cal.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    },
+                                    modifier = Modifier.weight(1f).testTag("btn_select_data_inicio"),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = CardDefaults.outlinedCardColors(containerColor = Color.White)
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Text("Início do Reembolso *", fontSize = 10.sp, color = GrayText)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(KwanzaFormatters.formatDate(dataInicioReembolso), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DeepBlue)
+                                        Text("Clique p/ alterar", fontSize = 9.sp, color = DarkGold)
+                                    }
+                                }
+
+                                // Data Fim Reembolso
+                                OutlinedCard(
+                                    onClick = {
+                                        val cal = Calendar.getInstance().apply { timeInMillis = dataFimReembolso }
+                                        android.app.DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                val selCal = Calendar.getInstance().apply {
+                                                    set(Calendar.YEAR, year)
+                                                    set(Calendar.MONTH, month)
+                                                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                                    set(Calendar.HOUR_OF_DAY, 8)
+                                                }
+                                                dataFimReembolso = selCal.timeInMillis
+                                            },
+                                            cal.get(Calendar.YEAR),
+                                            cal.get(Calendar.MONTH),
+                                            cal.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    },
+                                    modifier = Modifier.weight(1f).testTag("btn_select_data_fim"),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = CardDefaults.outlinedCardColors(containerColor = Color.White)
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Text("Fim do Reembolso *", fontSize = 10.sp, color = GrayText)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(KwanzaFormatters.formatDate(dataFimReembolso), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ForestGreen)
+                                        Text("Clique p/ alterar", fontSize = 9.sp, color = DarkGold)
+                                    }
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = AccentGold.copy(alpha = 0.15f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = DeepBlue, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Os lembretes automáticos diários (08:00 e 17:00) acompanharão este cliente do dia ${KwanzaFormatters.formatDate(dataInicioReembolso)} até ${KwanzaFormatters.formatDate(dataFimReembolso)} até a liquidação final.",
+                                        fontSize = 10.sp,
+                                        color = DeepBlue,
+                                        lineHeight = 13.sp
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -367,11 +563,7 @@ fun AddEditClienteScreen(
             Button(
                 onClick = {
                     if (nome.isNotEmpty()) {
-                        val now = System.currentTimeMillis()
-                        val cal = Calendar.getInstance().apply {
-                            timeInMillis = now
-                            add(Calendar.MONTH, 1)
-                        }
+                        val nowTime = System.currentTimeMillis()
 
                         val cliente = ClienteEntity(
                             id = clienteToEdit?.id ?: 0L,
@@ -403,14 +595,14 @@ fun AddEditClienteScreen(
                             prestacaoMensal = prestacaoMensal,
                             quantidadePrestacoes = qtdPrestacoes,
                             prestacoesPagas = creditoToEdit?.prestacoesPagas ?: 0,
-                            dataDesembolso = creditoToEdit?.dataDesembolso ?: now,
-                            dataPrimeiroPagamento = creditoToEdit?.dataPrimeiroPagamento ?: cal.timeInMillis,
-                            dataUltimoPagamento = creditoToEdit?.dataUltimoPagamento ?: now,
+                            dataDesembolso = creditoToEdit?.dataDesembolso ?: nowTime,
+                            dataPrimeiroPagamento = dataInicioReembolso,
+                            dataUltimoPagamento = dataFimReembolso,
                             diasCredito = diasCreditoText.toIntOrNull() ?: 360,
                             estado = creditoToEdit?.estado ?: "Ativo",
                             valorEmAtraso = creditoToEdit?.valorEmAtraso ?: 0.0,
                             diasEmAtraso = creditoToEdit?.diasEmAtraso ?: 0,
-                            proximoVencimento = creditoToEdit?.proximoVencimento ?: cal.timeInMillis
+                            proximoVencimento = if (creditoToEdit == null || creditoToEdit.prestacoesPagas == 0) dataInicioReembolso else (creditoToEdit.proximoVencimento.takeIf { it > 0 } ?: dataInicioReembolso)
                         )
 
                         onSaveCliente(cliente, credito)

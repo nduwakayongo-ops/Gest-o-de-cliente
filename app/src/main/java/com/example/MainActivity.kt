@@ -64,8 +64,9 @@ class MainActivity : FragmentActivity() {
 enum class ScreenTab(val title: String, val route: String) {
     DASHBOARD("Início", "dashboard"),
     CLIENTES("Clientes", "clientes"),
+    CALCULADORA("Calculadora", "calculadora"),
     CALENDARIO("Calendário", "calendario"),
-    ESTATISTICAS("Estatísticas", "estatisticas"),
+    ESTATISTICAS("Simulador", "estatisticas"),
     RELATORIOS("Relatórios", "relatorios"),
     ALERTAS("Alertas", "alertas"),
     CONFIGURACOES("Configurações", "configuracoes"),
@@ -119,6 +120,8 @@ fun MainAppScreen(
     }
 
     val isSpeaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
+    val isInternetConnected by viewModel.isInternetConnected.collectAsStateWithLifecycle()
+    val calculadoraViewModel: com.example.ui.viewmodel.CalculadoraViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 
     Scaffold(
         topBar = {
@@ -155,6 +158,15 @@ fun MainAppScreen(
                         label = { Text("Clientes", fontSize = 10.sp) },
                         colors = NavigationBarItemDefaults.colors(selectedIconColor = DeepBlue, indicatorColor = DeepBlue.copy(alpha = 0.12f)),
                         modifier = Modifier.testTag("nav_item_clientes")
+                    )
+
+                    NavigationBarItem(
+                        selected = currentTab == ScreenTab.CALCULADORA,
+                        onClick = { currentTab = ScreenTab.CALCULADORA },
+                        icon = { Icon(Icons.Default.Calculate, contentDescription = "Calculadora") },
+                        label = { Text("Calculadora", fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(selectedIconColor = DeepBlue, indicatorColor = DeepBlue.copy(alpha = 0.12f)),
+                        modifier = Modifier.testTag("nav_item_calculadora")
                     )
 
                     NavigationBarItem(
@@ -235,6 +247,18 @@ fun MainAppScreen(
                     }
                 )
 
+                ScreenTab.CALCULADORA -> CalculadoraInteligenteScreen(
+                    calculadoraViewModel = calculadoraViewModel,
+                    onApplyToNewCliente = { principal, taxa, prazo ->
+                        calculadoraViewModel.updateValorDesembolsado(principal.toInt().toString())
+                        calculadoraViewModel.updateTaxaJuros(taxa.toInt().toString())
+                        calculadoraViewModel.updatePrazoMeses(prazo.toString())
+                        clienteToEdit = null
+                        currentTab = ScreenTab.ADD_CLIENTE
+                    },
+                    onSpeakSummary = { text -> viewModel.speakText(text) }
+                )
+
                 ScreenTab.CALENDARIO -> CalendarioScreen(
                     clientesWithCredito = allClientesWithCredito,
                     onSelectCliente = { id ->
@@ -266,7 +290,9 @@ fun MainAppScreen(
 
                 ScreenTab.CONFIGURACOES -> BackupConfiguracoesScreen(
                     configuracao = configuracao,
-                    onSaveConfiguracao = { viewModel.updateConfiguracao(it) }
+                    isInternetConnected = isInternetConnected,
+                    onSaveConfiguracao = { viewModel.updateConfiguracao(it) },
+                    onZerarSistema = { viewModel.zerarSistema() }
                 )
 
                 ScreenTab.ADD_CLIENTE -> AddEditClienteScreen(

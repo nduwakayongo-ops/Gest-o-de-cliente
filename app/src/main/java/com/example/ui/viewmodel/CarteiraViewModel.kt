@@ -27,22 +27,28 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
         db.configuracaoDao()
     )
 
+    init {
+        com.example.util.AutoBackupManager.init(application)
+    }
+
+    val isInternetConnected: StateFlow<Boolean> = com.example.util.AutoBackupManager.isConnected
+
     val dashboardSummary: StateFlow<DashboardSummary> = repository.dashboardSummary
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = DashboardSummary(
-                carteiraAtiva = 18230550.0,
-                totalClientes = 152,
-                clientesAtivosCount = 120,
-                clientesLiquidadosCount = 20,
-                clientesEmAtrasoCount = 12,
-                totalDesembolsado = 23500000.0,
-                totalRecuperado = 5269450.0,
-                valorEmAtraso = 1975120.0,
-                riscoPercentual = 10.83,
-                prestacoesVencendoCount = 6,
-                notificacoesCount = 4
+                carteiraAtiva = 0.0,
+                totalClientes = 0,
+                clientesAtivosCount = 0,
+                clientesLiquidadosCount = 0,
+                clientesEmAtrasoCount = 0,
+                totalDesembolsado = 0.0,
+                totalRecuperado = 0.0,
+                valorEmAtraso = 0.0,
+                riscoPercentual = 0.0,
+                prestacoesVencendoCount = 0,
+                notificacoesCount = 0
             )
         )
 
@@ -168,6 +174,16 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    fun zerarSistema(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.zerarSistema()
+            if (isInternetConnected.value) {
+                com.example.util.AutoBackupManager.executeBackup(getApplication())
+            }
+            onComplete()
+        }
+    }
+
     fun saveClienteComCredito(cliente: ClienteEntity, credito: CreditoEntity, onComplete: () -> Unit) {
         viewModelScope.launch {
             if (cliente.id != 0L) {
@@ -180,6 +196,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
             } else {
                 repository.insertClienteWithCredito(cliente, credito)
             }
+            if (isInternetConnected.value) {
+                com.example.util.AutoBackupManager.executeBackup(getApplication())
+            }
             onComplete()
         }
     }
@@ -187,6 +206,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
     fun updateCliente(cliente: ClienteEntity, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             repository.updateCliente(cliente)
+            if (isInternetConnected.value) {
+                com.example.util.AutoBackupManager.executeBackup(getApplication())
+            }
             onComplete()
         }
     }
@@ -194,6 +216,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
     fun deleteCliente(cliente: ClienteEntity, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             repository.deleteCliente(cliente)
+            if (isInternetConnected.value) {
+                com.example.util.AutoBackupManager.executeBackup(getApplication())
+            }
             onComplete()
         }
     }
@@ -201,6 +226,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
     fun updateCredito(credito: CreditoEntity, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             repository.updateCredito(credito)
+            if (isInternetConnected.value) {
+                com.example.util.AutoBackupManager.executeBackup(getApplication())
+            }
             onComplete()
         }
     }
@@ -208,6 +236,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
     fun deletePagamento(pagamento: PagamentoEntity, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             repository.deletePagamento(pagamento)
+            if (isInternetConnected.value) {
+                com.example.util.AutoBackupManager.executeBackup(getApplication())
+            }
             onComplete()
         }
     }
@@ -215,6 +246,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
     fun deleteCobranca(cobranca: CobrancaEntity, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             repository.deleteCobranca(cobranca)
+            if (isInternetConnected.value) {
+                com.example.util.AutoBackupManager.executeBackup(getApplication())
+            }
             onComplete()
         }
     }
@@ -222,6 +256,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
     fun registrarPagamento(pagamento: PagamentoEntity, onComplete: () -> Unit) {
         viewModelScope.launch {
             repository.insertPagamento(pagamento)
+            if (isInternetConnected.value) {
+                com.example.util.AutoBackupManager.executeBackup(getApplication())
+            }
             onComplete()
         }
     }
@@ -229,6 +266,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
     fun registrarCobranca(cobranca: CobrancaEntity, onComplete: () -> Unit) {
         viewModelScope.launch {
             repository.insertCobranca(cobranca)
+            if (isInternetConnected.value) {
+                com.example.util.AutoBackupManager.executeBackup(getApplication())
+            }
             onComplete()
         }
     }

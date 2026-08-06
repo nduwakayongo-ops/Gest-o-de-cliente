@@ -6,3 +6,4 @@
         android:drawable="@drawable/nduwa_photo"
         android:gravity="center" />
 </layer-list>
+
