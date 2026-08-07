@@ -56,10 +56,11 @@ fun RelatoriosScreen(
             appendLine("TABELA COMPLETA DE CLIENTES")
             appendLine("--------------------------------------------")
             clientesWithCredito.forEachIndexed { idx, (cliente, credito) ->
-                appendLine("${idx + 1}. ${cliente.nome}")
-                appendLine("   Banco: ${cliente.banco} | Tel: ${cliente.telefone}")
-                appendLine("   Prestação: ${KwanzaFormatters.formatAOA(credito?.prestacaoMensal ?: 0.0)}")
-                appendLine("   Estado: ${credito?.estado} | Atraso: ${credito?.diasEmAtraso ?: 0} dias (${KwanzaFormatters.formatAOA(credito?.valorEmAtraso ?: 0.0)})")
+                appendLine("${idx + 1}. NOME DO CLIENTE: ${KwanzaFormatters.formatPrimeiroEUltimoNome(cliente.nome)}")
+                appendLine("   TEL: ${cliente.telefone} | BANCO: ${cliente.banco}")
+                appendLine("   VALOR RECEBIDO: ${KwanzaFormatters.formatAOA(credito?.valorDesembolsado ?: 0.0)}")
+                appendLine("   PRESTAÇÃO: ${KwanzaFormatters.formatAOA(credito?.prestacaoMensal ?: 0.0)}")
+                appendLine("   DIA DO REEMBOLSO: ${if (credito != null) KwanzaFormatters.formatDate(credito.proximoVencimento) else "N/A"}")
                 appendLine("--------------------------------------------")
             }
             appendLine("Gestão Inteligente da Carteira de Crédito")
@@ -163,15 +164,15 @@ fun RelatoriosScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(DeepBlue, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                        .padding(horizontal = 6.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Nome", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.8f))
-                    Text("Banco", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.0f))
-                    Text("Prestação", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.3f))
-                    Text("Atraso", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.0f))
-                    Text("Estado", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f))
+                    Text("Cliente / Tel", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.8f))
+                    Text("Banco", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.0f))
+                    Text("Valor Rec.", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f))
+                    Text("Prestação", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f))
+                    Text("Reembolso", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.1f))
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -189,17 +190,23 @@ fun RelatoriosScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(rowBg, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 8.dp, vertical = 8.dp),
+                                .padding(horizontal = 6.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = cliente.nome,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = DeepBlue,
-                                modifier = Modifier.weight(1.8f)
-                            )
+                            Column(modifier = Modifier.weight(1.8f)) {
+                                Text(
+                                    text = KwanzaFormatters.formatPrimeiroEUltimoNome(cliente.nome),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = DeepBlue
+                                )
+                                Text(
+                                    text = cliente.telefone,
+                                    fontSize = 9.sp,
+                                    color = GrayText
+                                )
+                            }
                             Text(
                                 text = cliente.banco,
                                 fontSize = 10.sp,
@@ -207,32 +214,26 @@ fun RelatoriosScreen(
                                 modifier = Modifier.weight(1.0f)
                             )
                             Text(
+                                text = KwanzaFormatters.formatAOA(credito?.valorDesembolsado ?: 0.0),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = DeepBlue,
+                                modifier = Modifier.weight(1.2f)
+                            )
+                            Text(
                                 text = KwanzaFormatters.formatAOA(credito?.prestacaoMensal ?: 0.0),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = ForestGreen,
-                                modifier = Modifier.weight(1.3f)
+                                modifier = Modifier.weight(1.2f)
                             )
                             Text(
-                                text = "${credito?.diasEmAtraso ?: 0}d",
-                                fontSize = 10.sp,
+                                text = if (credito != null) KwanzaFormatters.formatDate(credito.proximoVencimento) else "N/A",
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isOverdue) WarningRed else GrayText,
-                                modifier = Modifier.weight(1.0f)
-                            )
-                            Surface(
-                                color = if (isOverdue) WarningRed.copy(alpha = 0.15f) else ForestGreen.copy(alpha = 0.15f),
-                                shape = RoundedCornerShape(4.dp),
+                                color = if (isOverdue) WarningRed else DeepBlue,
                                 modifier = Modifier.weight(1.1f)
-                            ) {
-                                Text(
-                                    text = credito?.estado ?: "Sem crédito",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isOverdue) WarningRed else ForestGreen,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                )
-                            }
+                            )
                         }
                     }
                 }

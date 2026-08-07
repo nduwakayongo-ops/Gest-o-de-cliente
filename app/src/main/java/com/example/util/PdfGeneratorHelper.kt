@@ -86,11 +86,11 @@ object PdfGeneratorHelper {
             paint.textSize = 11f
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
 
-            canvas.drawText("Nome Completo: ${cliente.nome}", 20f, y, paint)
+            canvas.drawText("NOME DO CLIENTE: ${KwanzaFormatters.formatPrimeiroEUltimoNome(cliente.nome)}", 20f, y, paint)
             canvas.drawText("Nº Interno: ${cliente.numeroInterno}", 350f, y, paint)
             y += 18f
 
-            canvas.drawText("Telefone: ${cliente.telefone}", 20f, y, paint)
+            canvas.drawText("TELEFONE: ${cliente.telefone}", 20f, y, paint)
             canvas.drawText("Sexo: ${if (cliente.sexo == "M") "Masculino" else "Feminino"}", 350f, y, paint)
             y += 18f
 
@@ -102,7 +102,7 @@ object PdfGeneratorHelper {
             canvas.drawText("Salário: ${KwanzaFormatters.formatAOA(cliente.salario)}", 350f, y, paint)
             y += 18f
 
-            canvas.drawText("Banco: ${cliente.banco}", 20f, y, paint)
+            canvas.drawText("BANCO: ${cliente.banco}", 20f, y, paint)
             canvas.drawText("Nº Conta: ${cliente.numeroConta.ifEmpty { "N/A" }}", 200f, y, paint)
             canvas.drawText("IBAN: ${cliente.iban.ifEmpty { "N/A" }}", 380f, y, paint)
             y += 30f
@@ -126,12 +126,12 @@ object PdfGeneratorHelper {
                 paint.textSize = 11f
                 paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
 
-                canvas.drawText("Valor Desembolsado: ${KwanzaFormatters.formatAOA(credito.valorDesembolsado)}", 30f, y + 10f, paint)
+                canvas.drawText("VALOR RECEBIDO: ${KwanzaFormatters.formatAOA(credito.valorDesembolsado)}", 30f, y + 10f, paint)
                 canvas.drawText("Taxa de Juros: ${credito.taxaPercentual}%", 320f, y + 10f, paint)
 
                 val valorTotal = credito.prestacaoMensal * credito.quantidadePrestacoes
                 canvas.drawText("Valor Total do Crédito: ${KwanzaFormatters.formatAOA(valorTotal)}", 30f, y + 30f, paint)
-                canvas.drawText("Prestação Mensal: ${KwanzaFormatters.formatAOA(credito.prestacaoMensal)}", 320f, y + 30f, paint)
+                canvas.drawText("PRESTAÇÃO: ${KwanzaFormatters.formatAOA(credito.prestacaoMensal)}", 320f, y + 30f, paint)
 
                 val pagas = credito.prestacoesPagas
                 val totalP = credito.quantidadePrestacoes
@@ -143,7 +143,7 @@ object PdfGeneratorHelper {
 
                 val proximoFormatado = KwanzaFormatters.formatDate(credito.proximoVencimento)
                 paint.color = darkText
-                canvas.drawText("Próximo Vencimento: $proximoFormatado", 30f, y + 70f, paint)
+                canvas.drawText("DIA DO REEMBOLSO: $proximoFormatado", 30f, y + 70f, paint)
                 y += 105f
             } else {
                 canvas.drawText("Nenhum contrato de crédito ativo.", 20f, y, paint)
@@ -303,46 +303,46 @@ object PdfGeneratorHelper {
 
             // Table Header
             paint.color = deepBlue
-            canvas.drawRect(20f, y - 10f, 575f, y + 12f, paint)
+            canvas.drawRect(20f, y - 10f, 575f, y + 14f, paint)
 
             paint.color = Color.WHITE
-            paint.textSize = 9f
+            paint.textSize = 8f
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             canvas.drawText("NOME DO CLIENTE", 25f, y + 2f, paint)
-            canvas.drawText("BANCO", 180f, y + 2f, paint)
-            canvas.drawText("PRESTAÇÃO", 270f, y + 2f, paint)
-            canvas.drawText("DIAS ATRASO", 380f, y + 2f, paint)
-            canvas.drawText("ESTADO", 480f, y + 2f, paint)
-            y += 20f
+            canvas.drawText("TELEFONE", 140f, y + 2f, paint)
+            canvas.drawText("BANCO", 215f, y + 2f, paint)
+            canvas.drawText("VALOR RECEBIDO", 270f, y + 2f, paint)
+            canvas.drawText("PRESTAÇÃO", 380f, y + 2f, paint)
+            canvas.drawText("DIA REEMBOLSO", 480f, y + 2f, paint)
+            y += 22f
 
             paint.color = darkText
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
 
-            clientesWithCredito.take(30).forEachIndexed { idx, (cliente, credito) ->
+            clientesWithCredito.forEachIndexed { idx, (cliente, credito) ->
                 if (idx % 2 == 1) {
                     paint.color = lightBg
                     canvas.drawRect(20f, y - 8f, 575f, y + 8f, paint)
                 }
 
                 paint.color = darkText
-                paint.textSize = 9f
-                val shortNome = if (cliente.nome.length > 20) cliente.nome.take(18) + "..." else cliente.nome
-                canvas.drawText(shortNome, 25f, y, paint)
-                canvas.drawText(cliente.banco, 180f, y, paint)
+                paint.textSize = 8f
+                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+
+                val shortNome = KwanzaFormatters.formatPrimeiroEUltimoNome(cliente.nome)
+                val displayNome = if (shortNome.length > 18) shortNome.take(16) + ".." else shortNome
+                canvas.drawText(displayNome, 25f, y, paint)
+                canvas.drawText(cliente.telefone, 140f, y, paint)
+                canvas.drawText(cliente.banco, 215f, y, paint)
+
+                val valorRecebido = credito?.valorDesembolsado ?: 0.0
+                canvas.drawText(KwanzaFormatters.formatAOA(valorRecebido), 270f, y, paint)
 
                 val prestacaoVal = credito?.prestacaoMensal ?: 0.0
-                canvas.drawText(KwanzaFormatters.formatAOA(prestacaoVal), 270f, y, paint)
+                canvas.drawText(KwanzaFormatters.formatAOA(prestacaoVal), 380f, y, paint)
 
-                val diasAtraso = credito?.diasEmAtraso ?: 0
-                canvas.drawText("$diasAtraso dias", 380f, y, paint)
-
-                val st = credito?.estado ?: "Sem crédito"
-                paint.color = if (st == "Em atraso") warningRed else if (st == "Liquidado") forestGreen else deepBlue
-                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                canvas.drawText(st, 480f, y, paint)
-
-                paint.color = darkText
-                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+                val diaReembolso = if (credito != null) KwanzaFormatters.formatDate(credito.proximoVencimento) else "N/A"
+                canvas.drawText(diaReembolso, 480f, y, paint)
 
                 y += 16f
             }

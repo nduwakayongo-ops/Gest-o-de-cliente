@@ -26,4 +26,15 @@ object KwanzaFormatters {
         val diffMs = vencimentoTimestamp - now
         return (diffMs / (24 * 3600 * 1000)).toInt()
     }
+
+    fun formatPrimeiroEUltimoNome(fullName: String): String {
+        val trimmed = fullName.trim()
+        if (trimmed.isEmpty()) return ""
+        val parts = trimmed.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        return if (parts.size <= 1) {
+            parts.firstOrNull() ?: ""
+        } else {
+            "${parts.first()} ${parts.last()}"
+        }
+    }
 }
