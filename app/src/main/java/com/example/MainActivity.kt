@@ -86,6 +86,7 @@ fun MainAppScreen(
     val allClientesList by viewModel.allClientes.collectAsStateWithLifecycle()
     val allCreditosList by viewModel.allCreditos.collectAsStateWithLifecycle()
     val allPagamentosList by viewModel.allPagamentos.collectAsStateWithLifecycle()
+    val allCobrancasList by viewModel.allCobrancas.collectAsStateWithLifecycle()
     val configuracao by viewModel.configuracao.collectAsStateWithLifecycle()
 
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
@@ -119,6 +120,10 @@ fun MainAppScreen(
         allPagamentosList.filter { it.clienteId == selectedClienteId }
     }
 
+    val selectedCobrancas = remember(allCobrancasList, selectedClienteId) {
+        allCobrancasList.filter { it.clienteId == selectedClienteId }
+    }
+
     val isSpeaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
     val isInternetConnected by viewModel.isInternetConnected.collectAsStateWithLifecycle()
     val calculadoraViewModel: com.example.ui.viewmodel.CalculadoraViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -131,7 +136,8 @@ fun MainAppScreen(
                     onNotificationClick = { currentTab = ScreenTab.ALERTAS },
                     isDarkTheme = isDarkTheme,
                     onToggleTheme = onToggleTheme,
-                    fotoPerfilUri = configuracao?.fotoPerfilUri
+                    fotoPerfilUri = configuracao?.fotoPerfilUri,
+                    onProfileClick = { currentTab = ScreenTab.CONFIGURACOES }
                 )
             }
         },
@@ -317,7 +323,7 @@ fun MainAppScreen(
                     cliente = selectedClientePair?.first,
                     creditos = if (selectedClientePair?.second != null) listOf(selectedClientePair.second!!) else emptyList(),
                     pagamentos = selectedPagamentos,
-                    cobrancas = emptyList(),
+                    cobrancas = selectedCobrancas,
                     onBackClick = { currentTab = ScreenTab.CLIENTES },
                     onRegistrarPagamento = { pag -> viewModel.registrarPagamento(pag) {} },
                     onRegistrarCobranca = { cob -> viewModel.registrarCobranca(cob) {} },

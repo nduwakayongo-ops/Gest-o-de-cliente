@@ -81,6 +81,9 @@ interface PagamentoDao {
 
 @Dao
 interface CobrancaDao {
+    @Query("SELECT * FROM cobrancas ORDER BY dataContato DESC")
+    fun getAllCobrancasFlow(): Flow<List<CobrancaEntity>>
+
     @Query("SELECT * FROM cobrancas WHERE clienteId = :clienteId ORDER BY dataContato DESC")
     fun getCobrancasByClienteFlow(clienteId: Long): Flow<List<CobrancaEntity>>
 

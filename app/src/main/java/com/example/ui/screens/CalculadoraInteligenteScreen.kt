@@ -15,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -105,6 +107,7 @@ fun CalculadoraInteligenteScreen(
                         value = valorDesembolsadoText,
                         onValueChange = { calculadoraViewModel.updateValorDesembolsado(it) },
                         label = { Text("Valor Desembolsado / Capital (AOA)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().testTag("input_calc_valor"),
                         singleLine = true
                     )
@@ -114,6 +117,7 @@ fun CalculadoraInteligenteScreen(
                             value = taxaJurosText,
                             onValueChange = { calculadoraViewModel.updateTaxaJuros(it) },
                             label = { Text("Taxa (%)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f).testTag("input_calc_taxa"),
                             singleLine = true
                         )
@@ -121,6 +125,7 @@ fun CalculadoraInteligenteScreen(
                             value = prazoMesesText,
                             onValueChange = { calculadoraViewModel.updatePrazoMeses(it) },
                             label = { Text("Prazo (Meses)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f).testTag("input_calc_prazo"),
                             singleLine = true
                         )
@@ -128,6 +133,7 @@ fun CalculadoraInteligenteScreen(
                             value = parcelasPagasText,
                             onValueChange = { calculadoraViewModel.updateParcelasPagas(it) },
                             label = { Text("Pagas") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f).testTag("input_calc_pagas"),
                             singleLine = true
                         )

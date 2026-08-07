@@ -30,6 +30,7 @@ class CarteiraRepository(
     val allClientes: Flow<List<ClienteEntity>> = clienteDao.getAllClientesFlow()
     val allCreditos: Flow<List<CreditoEntity>> = creditoDao.getAllCreditosFlow()
     val allPagamentos: Flow<List<PagamentoEntity>> = pagamentoDao.getAllPagamentosFlow()
+    val allCobrancas: Flow<List<CobrancaEntity>> = cobrancaDao.getAllCobrancasFlow()
     val configuracao: Flow<ConfiguracaoEntity?> = configuracaoDao.getConfiguracaoFlow()
 
     fun getClienteWithDetails(clienteId: Long): Flow<ClienteEntity?> = clienteDao.getClienteByIdFlow(clienteId)

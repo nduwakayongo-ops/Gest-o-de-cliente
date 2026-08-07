@@ -170,26 +170,18 @@ fun ClienteDetailScreen(
                         Icon(Icons.Default.Delete, contentDescription = "Excluir Cliente", tint = Color(0xFFFF6B6B))
                     }
                     IconButton(onClick = {
-                        val shareText = """
-                            *GESTÃO DE CLIENTES - NDUWA KAYONGO*
-                            ------------------------------------
-                            *Cliente:* ${cliente.nome}
-                            *Número Interno:* ${cliente.numeroInterno}
-                            *Banco:* ${cliente.banco}
-                            *IBAN:* ${cliente.iban}
-                            *Prestação Mensal:* ${KwanzaFormatters.formatAOA(credito?.prestacaoMensal ?: 0.0)}
-                            *Estado:* ${credito?.estado}
-                            *Valor em Atraso:* ${KwanzaFormatters.formatAOA(credito?.valorEmAtraso ?: 0.0)}
-                            ------------------------------------
-                            Gestão Inteligente da Carteira de Crédito
-                        """.trimIndent()
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        val pdfFile = com.example.util.PdfGeneratorHelper.generateExtratoClientePdf(
+                            context = context,
+                            cliente = cliente,
+                            credito = credito,
+                            pagamentos = pagamentos,
+                            cobrancas = cobrancas
+                        )
+                        if (pdfFile != null) {
+                            com.example.util.PdfGeneratorHelper.sharePdf(context, pdfFile)
                         }
-                        context.startActivity(Intent.createChooser(intent, "Compartilhar Resumo do Cliente"))
                     }) {
-                        Icon(Icons.Default.Share, contentDescription = "Compartilhar", tint = Color.White)
+                        Icon(Icons.Default.Share, contentDescription = "Partilhar Extrato PDF", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DeepBlue)

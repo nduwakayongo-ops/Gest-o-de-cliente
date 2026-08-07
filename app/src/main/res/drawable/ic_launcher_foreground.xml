@@ -3,7 +3,7 @@
     <item
         android:width="108dp"
         android:height="108dp"
-        android:drawable="@drawable/nduwa_photo"
+        android:drawable="@drawable/app_logo_icon_1786002531844"
         android:gravity="center" />
 </layer-list>
 

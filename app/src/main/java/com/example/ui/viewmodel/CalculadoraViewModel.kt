@@ -60,10 +60,16 @@ class CalculadoraViewModel : ViewModel() {
         _parcelasPagasInput,
         _tipoCalculo
     ) { valDes, taxa, prazo, pagas, tipo ->
-        val principal = valDes.toDoubleOrNull() ?: 0.0
-        val taxaPct = taxa.toDoubleOrNull() ?: 0.0
-        val nMeses = (prazo.toIntOrNull() ?: 12).coerceAtLeast(1)
-        val nPagas = (pagas.toIntOrNull() ?: 0).coerceIn(0, nMeses)
+        fun parseDouble(s: String): Double =
+            s.replace(",", ".").replace(" ", "").replace("[^0-9.]".toRegex(), "").toDoubleOrNull() ?: 0.0
+
+        fun parseInt(s: String): Int =
+            s.replace(" ", "").replace("[^0-9]".toRegex(), "").toIntOrNull() ?: 0
+
+        val principal = parseDouble(valDes)
+        val taxaPct = parseDouble(taxa)
+        val nMeses = parseInt(prazo).coerceAtLeast(1)
+        val nPagas = parseInt(pagas).coerceIn(0, nMeses)
 
         calcularSaldoDevedorEParcelas(
             principal = principal,

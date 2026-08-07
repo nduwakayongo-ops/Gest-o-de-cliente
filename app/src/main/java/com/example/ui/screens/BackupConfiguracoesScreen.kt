@@ -86,11 +86,28 @@ fun BackupConfiguracoesScreen(
             Row(
                 modifier = Modifier.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Official App Logo
                 Box(
                     modifier = Modifier
-                        .size(68.dp)
+                        .size(60.dp)
+                        .border(2.dp, AccentGold, RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White)
+                ) {
+                    AsyncImage(
+                        model = R.drawable.app_logo_icon_1786002531844,
+                        contentDescription = "Logo do Sistema",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                // Profile Avatar
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
                         .border(2.dp, AccentGold, CircleShape)
                         .clip(CircleShape)
                         .background(Color.White)
@@ -105,8 +122,8 @@ fun BackupConfiguracoesScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        Image(
-                            painter = painterResource(id = R.drawable.nduwa_photo),
+                        AsyncImage(
+                            model = R.drawable.nduwa_photo,
                             contentDescription = "Foto de Nduwa Kayongo",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()

@@ -36,7 +36,8 @@ fun HeaderBranding(
     onNotificationClick: () -> Unit = {},
     isDarkTheme: Boolean = false,
     onToggleTheme: () -> Unit = {},
-    fotoPerfilUri: String? = null
+    fotoPerfilUri: String? = null,
+    onProfileClick: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -60,31 +61,24 @@ fun HeaderBranding(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onProfileClick() }
             ) {
-                // Nduwa Kayongo Profile Photo
+                // Official Requested App Logo
                 Box(
                     modifier = Modifier
                         .size(52.dp)
-                        .border(2.dp, AccentGold, CircleShape)
-                        .clip(CircleShape)
+                        .border(2.dp, AccentGold, RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(Color.White)
                 ) {
-                    if (!fotoPerfilUri.isNullOrEmpty()) {
-                        AsyncImage(
-                            model = fotoPerfilUri,
-                            contentDescription = "Foto de Nduwa Kayongo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        AsyncImage(
-                            model = R.drawable.nduwa_photo,
-                            contentDescription = "Foto de Nduwa Kayongo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                    AsyncImage(
+                        model = R.drawable.app_logo_icon_1786002531844,
+                        contentDescription = "Logo do Sistema",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
                 Column {
@@ -115,6 +109,32 @@ fun HeaderBranding(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // User Profile Avatar
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .border(1.5.dp, AccentGold, CircleShape)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .clickable { onProfileClick() }
+                        .testTag("header_profile_avatar")
+                ) {
+                    if (!fotoPerfilUri.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = fotoPerfilUri,
+                            contentDescription = "Foto de Nduwa Kayongo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        AsyncImage(
+                            model = R.drawable.nduwa_photo,
+                            contentDescription = "Foto de Nduwa Kayongo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
                 // Dark/Light Theme Switcher Button
                 Box(
                     modifier = Modifier

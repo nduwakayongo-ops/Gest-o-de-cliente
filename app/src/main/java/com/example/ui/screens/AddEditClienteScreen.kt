@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -93,9 +95,19 @@ fun AddEditClienteScreen(
     }.timeInMillis
     var dataFimReembolso by remember(creditoToEdit) { mutableLongStateOf(initialEndDate) }
 
-    val valorDesembolsado = valorDesembolsadoText.toDoubleOrNull() ?: 0.0
-    val taxaPercentual = taxaText.toDoubleOrNull() ?: 0.0
-    val qtdPrestacoes = (qtdPrestacoesText.toIntOrNull() ?: 12).coerceAtLeast(1)
+    fun parseCleanDouble(text: String): Double {
+        val clean = text.replace(",", ".").replace(" ", "").replace("[^0-9.]".toRegex(), "")
+        return clean.toDoubleOrNull() ?: 0.0
+    }
+
+    fun parseCleanInt(text: String): Int {
+        val clean = text.replace(" ", "").replace("[^0-9]".toRegex(), "")
+        return clean.toIntOrNull() ?: 0
+    }
+
+    val valorDesembolsado = parseCleanDouble(valorDesembolsadoText)
+    val taxaPercentual = parseCleanDouble(taxaText)
+    val qtdPrestacoes = parseCleanInt(qtdPrestacoesText).coerceAtLeast(1)
 
     val simState = remember(valorDesembolsado, taxaPercentual, qtdPrestacoes, selectedTipoJuros) {
         com.example.ui.viewmodel.CalculadoraViewModel.calcularSaldoDevedorEParcelas(
@@ -350,6 +362,7 @@ fun AddEditClienteScreen(
                         value = valorDesembolsadoText,
                         onValueChange = { valorDesembolsadoText = it },
                         label = { Text("Valor Desembolsado (AOA) *") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().testTag("input_valor_desembolsado"),
                         singleLine = true
                     )
@@ -359,6 +372,7 @@ fun AddEditClienteScreen(
                             value = taxaText,
                             onValueChange = { taxaText = it },
                             label = { Text("Taxa (%)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
                             singleLine = true
                         )
@@ -366,6 +380,7 @@ fun AddEditClienteScreen(
                             value = qtdPrestacoesText,
                             onValueChange = { qtdPrestacoesText = it },
                             label = { Text("Qtd Prestações") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.weight(1f),
                             singleLine = true
                         )

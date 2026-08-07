@@ -111,16 +111,15 @@ fun RelatoriosScreen(
             ) {
                 Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Gerar PDF Oficial", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Visualizar PDF", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
 
             Button(
                 onClick = {
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, relatorioTexto)
+                    val pdfFile = com.example.util.PdfGeneratorHelper.generateRelatorioGeralPdf(context, clientesWithCredito, summary)
+                    if (pdfFile != null) {
+                        com.example.util.PdfGeneratorHelper.sharePdf(context, pdfFile)
                     }
-                    context.startActivity(Intent.createChooser(intent, "Compartilhar Relatório"))
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = DeepBlue),
                 modifier = Modifier
@@ -129,7 +128,7 @@ fun RelatoriosScreen(
             ) {
                 Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("WhatsApp / Texto", fontSize = 12.sp)
+                Text("Partilhar PDF", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
 

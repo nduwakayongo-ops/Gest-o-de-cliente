@@ -368,6 +368,29 @@ object PdfGeneratorHelper {
         }
     }
 
+    fun sharePdf(context: Context, file: File) {
+        try {
+            val uri: Uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
+            val chooser = Intent.createChooser(intent, "Partilhar Relatório em PDF")
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(chooser)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Erro ao partilhar PDF: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     fun openOrSharePdf(context: Context, file: File) {
         try {
             val uri: Uri = FileProvider.getUriForFile(
@@ -386,7 +409,7 @@ object PdfGeneratorHelper {
             context.startActivity(chooser)
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "PDF gerado com sucesso em: ${file.name}", Toast.LENGTH_LONG).show()
+            sharePdf(context, file)
         }
     }
 }

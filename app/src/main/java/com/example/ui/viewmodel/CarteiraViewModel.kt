@@ -61,6 +61,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
     val allPagamentos: StateFlow<List<PagamentoEntity>> = repository.allPagamentos
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val allCobrancas: StateFlow<List<CobrancaEntity>> = repository.allCobrancas
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val configuracao: StateFlow<ConfiguracaoEntity?> = repository.configuracao
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
