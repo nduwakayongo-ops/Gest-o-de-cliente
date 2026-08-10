@@ -48,6 +48,7 @@ fun ClientesListScreen(
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
     var clientToDelete by remember { mutableStateOf<ClienteEntity?>(null) }
+    var lembreteTarget by remember { mutableStateOf<Pair<ClienteEntity, CreditoEntity?>?>(null) }
 
     val stateFilters = listOf("Todos", "Ativo", "Em atraso", "Liquidado", "Renegociado")
     val bankFilters = listOf("Todos", "BPC", "BAI", "BFA", "Banco Económico", "SOL", "Banco Atlântico", "BIC", "BCI", "KEVE", "Standard Bank", "YETU", "Caixa Tota", "Outro")
@@ -265,6 +266,7 @@ fun ClientesListScreen(
                             cliente = cliente,
                             credito = credito,
                             onClick = { onSelectCliente(cliente.id) },
+                            onLembreteClick = { lembreteTarget = Pair(cliente, credito) },
                             onEditClick = { onEditCliente(cliente) },
                             onDeleteClick = { clientToDelete = cliente }
                         )
@@ -273,6 +275,14 @@ fun ClientesListScreen(
             }
         }
     }
+
+    lembreteTarget?.let { (cliente, credito) ->
+        com.example.ui.components.EnviarLembreteDialog(
+            cliente = cliente,
+            credito = credito,
+            onDismiss = { lembreteTarget = null }
+        )
+    }
 }
 
 @Composable
@@ -280,6 +290,7 @@ fun ClientListItemCard(
     cliente: ClienteEntity,
     credito: CreditoEntity?,
     onClick: () -> Unit,
+    onLembreteClick: () -> Unit = {},
     onEditClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {}
 ) {
@@ -369,6 +380,10 @@ fun ClientListItemCard(
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
+                    }
+
+                    IconButton(onClick = onLembreteClick, modifier = Modifier.size(32.dp).testTag("btn_item_lembrete_${cliente.id}")) {
+                        Icon(Icons.Default.Chat, contentDescription = "Lembrete SMS/WhatsApp", tint = DarkGold, modifier = Modifier.size(18.dp))
                     }
 
                     IconButton(onClick = onEditClick, modifier = Modifier.size(32.dp)) {

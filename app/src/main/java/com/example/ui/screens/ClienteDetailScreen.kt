@@ -52,6 +52,7 @@ fun ClienteDetailScreen(
 
     var showPagamentoModal by remember { mutableStateOf(false) }
     var showCobrancaModal by remember { mutableStateOf(false) }
+    var showLembreteModal by remember { mutableStateOf(false) }
     var showDeleteClientDialog by remember { mutableStateOf(false) }
     var pagamentoToDelete by remember { mutableStateOf<PagamentoEntity?>(null) }
     var cobrancaToDelete by remember { mutableStateOf<CobrancaEntity?>(null) }
@@ -288,6 +289,19 @@ fun ClienteDetailScreen(
                             Text("Cobrança", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
 
+                        Button(
+                            onClick = { showLembreteModal = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = DarkGold),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("btn_enviar_lembrete")
+                        ) {
+                            Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Lembrete", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
                         IconButton(
                             onClick = {
                                 val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${cliente.telefone}"))
@@ -373,6 +387,15 @@ fun ClienteDetailScreen(
                 )
                 showCobrancaModal = false
             }
+        )
+    }
+
+    // Modal Enviar Lembrete SMS / WhatsApp
+    if (showLembreteModal) {
+        com.example.ui.components.EnviarLembreteDialog(
+            cliente = cliente,
+            credito = credito,
+            onDismiss = { showLembreteModal = false }
         )
     }
 }

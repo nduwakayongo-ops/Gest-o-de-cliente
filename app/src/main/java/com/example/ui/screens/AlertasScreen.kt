@@ -16,7 +16,7 @@ import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,6 +40,7 @@ fun AlertasScreen(
     isSpeaking: Boolean = false
 ) {
     val context = LocalContext.current
+    var lembreteTarget by remember { mutableStateOf<Pair<ClienteEntity, CreditoEntity?>?>(null) }
 
     // Filter alerts into Overdue and Upcoming
     val alertasOverdue = clientesWithCredito.filter { (_, credito) ->
@@ -213,15 +214,11 @@ fun AlertasScreen(
                                 }
 
                                 Button(
-                                    onClick = {
-                                        val message = "Olá ${cliente.nome}, lembramos que a sua prestação no valor de ${KwanzaFormatters.formatAOA(credito?.prestacaoMensal ?: 0.0)} do ${cliente.banco} encontra-se em atraso há ${credito?.diasEmAtraso} dias. Por favor entre em contato com Nduwa Kayongo."
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=${cliente.telefone.replace(" ", "")}&text=${Uri.encode(message)}"))
-                                        context.startActivity(intent)
-                                    },
+                                    onClick = { lembreteTarget = Pair(cliente, credito) },
                                     colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("WhatsApp", fontSize = 11.sp)
+                                    Text("Lembrete", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
 
                                 Button(
@@ -316,15 +313,11 @@ fun AlertasScreen(
                                 }
 
                                 Button(
-                                    onClick = {
-                                        val message = "Olá ${cliente.nome}, lembramos que a sua prestação no valor de ${KwanzaFormatters.formatAOA(credito?.prestacaoMensal ?: 0.0)} vence no dia ${KwanzaFormatters.formatDate(credito?.proximoVencimento ?: 0L)}."
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=${cliente.telefone.replace(" ", "")}&text=${Uri.encode(message)}"))
-                                        context.startActivity(intent)
-                                    },
+                                    onClick = { lembreteTarget = Pair(cliente, credito) },
                                     colors = ButtonDefaults.buttonColors(containerColor = DeepBlue),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("WhatsApp", fontSize = 11.sp)
+                                    Text("Lembrete", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -332,5 +325,13 @@ fun AlertasScreen(
                 }
             }
         }
+    }
+
+    lembreteTarget?.let { (cliente, credito) ->
+        com.example.ui.components.EnviarLembreteDialog(
+            cliente = cliente,
+            credito = credito,
+            onDismiss = { lembreteTarget = null }
+        )
     }
 }
