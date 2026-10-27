@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,7 +66,7 @@ fun HeaderBranding(
                     .weight(1f)
                     .clickable { onProfileClick() }
             ) {
-                // Official Requested App Logo
+                // Official Requested App Logo & Identity
                 Box(
                     modifier = Modifier
                         .size(52.dp)
@@ -74,8 +75,8 @@ fun HeaderBranding(
                         .background(Color.White)
                 ) {
                     AsyncImage(
-                        model = R.drawable.app_logo_icon_1786002531844,
-                        contentDescription = "Logo do Sistema",
+                        model = R.drawable.nduwa_photo,
+                        contentDescription = "Logo Oficial Nduwa Kayongo",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
@@ -119,21 +120,20 @@ fun HeaderBranding(
                         .clickable { onProfileClick() }
                         .testTag("header_profile_avatar")
                 ) {
-                    if (!fotoPerfilUri.isNullOrEmpty()) {
-                        AsyncImage(
-                            model = fotoPerfilUri,
-                            contentDescription = "Foto de Nduwa Kayongo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        AsyncImage(
-                            model = R.drawable.nduwa_photo,
-                            contentDescription = "Foto de Nduwa Kayongo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                    val avatarModel: Any = remember(fotoPerfilUri) {
+                        if (!fotoPerfilUri.isNullOrEmpty()) {
+                            val f = java.io.File(fotoPerfilUri)
+                            if (f.exists()) f else fotoPerfilUri
+                        } else {
+                            R.drawable.nduwa_photo
+                        }
                     }
+                    AsyncImage(
+                        model = avatarModel,
+                        contentDescription = "Foto de Nduwa Kayongo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
                 // Dark/Light Theme Switcher Button
                 Box(

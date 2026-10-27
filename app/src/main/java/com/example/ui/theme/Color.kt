@@ -7,6 +7,7 @@ val DeepBlueLight = Color(0xFF1976D2)
 val DeepBlueDark = Color(0xFF002171)
 
 val ForestGreen = Color(0xFF2E7D32)
+val ForestGreenDark = Color(0xFF1B5E20)
 val LightGreen = Color(0xFFE8F5E9)
 
 val AccentGold = Color(0xFFFFC107)
@@ -18,3 +19,5 @@ val GrayText = Color(0xFF546E7A)
 
 val WarningRed = Color(0xFFD32F2F)
 val WarningRedLight = Color(0xFFFFEBEE)
+
+val DarkText = Color(0xFF1E293B)

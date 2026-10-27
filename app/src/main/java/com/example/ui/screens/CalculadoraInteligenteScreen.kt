@@ -1,15 +1,13 @@
 package com.example.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Calculate
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,6 +25,8 @@ import com.example.ui.components.KwanzaFormatters
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.CalculadoraViewModel
 import com.example.ui.viewmodel.TipoCalculoJuros
+import com.example.util.LembreteHelper
+import com.example.util.PdfGeneratorHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +43,86 @@ fun CalculadoraInteligenteScreen(
     val state by calculadoraViewModel.calculoState.collectAsStateWithLifecycle()
 
     var showSchedule by remember { mutableStateOf(false) }
+    var showWhatsAppDialog by remember { mutableStateOf(false) }
+    var clienteNomeInput by remember { mutableStateOf("") }
+    var clienteTelefoneInput by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    if (showWhatsAppDialog) {
+        AlertDialog(
+            onDismissRequest = { showWhatsAppDialog = false },
+            title = {
+                Text("Enviar Simulação ao Cliente", fontWeight = FontWeight.Bold, color = DeepBlue)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Envie a simulação oficial diretamente ao cliente. Funciona mesmo com o aparelho offline (o WhatsApp e SMS guardam e enviam diretamente na rede).",
+                        fontSize = 12.sp,
+                        color = GrayText
+                    )
+                    OutlinedTextField(
+                        value = clienteNomeInput,
+                        onValueChange = { clienteNomeInput = it },
+                        label = { Text("Nome do Cliente (opcional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = clienteTelefoneInput,
+                        onValueChange = { clienteTelefoneInput = it },
+                        label = { Text("Telefone / WhatsApp") },
+                        placeholder = { Text("Ex: 923 000 000") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showWhatsAppDialog = false
+                        val nomeStr = if (clienteNomeInput.isNotBlank()) " para $clienteNomeInput" else ""
+                        val msg = """
+                            *MBULI-MICROCRÉDITO • SIMULAÇÃO DE CRÉDITO*
+                            *Gestor Responsável:* Nduwa Kayongo
+                            ${if (clienteNomeInput.isNotBlank()) "*Cliente:* $clienteNomeInput\n" else ""}
+                            *Capital:* ${KwanzaFormatters.formatAOA(state.principal)}
+                            *Taxa de Juros:* ${state.taxaPercentual}% ao mês
+                            *Prazo:* ${state.prazoMeses} meses (${state.tipoCalculo.label})
+                            ------------------------------------
+                            *Prestação Mensal:* ${KwanzaFormatters.formatAOA(state.prestacaoMensal)}
+                            *Total de Juros:* ${KwanzaFormatters.formatAOA(state.valorJurosTotal)}
+                            *Total a Liquidar:* ${KwanzaFormatters.formatAOA(state.valorTotalLiquidar)}
+                            ------------------------------------
+                            _Plano completo de pagamentos com amortização até à liquidação total._
+                        """.trimIndent()
+                        LembreteHelper.enviarWhatsApp(context, clienteTelefoneInput, msg)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = ForestGreen)
+                ) {
+                    Text("WhatsApp (Direto)")
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = {
+                            showWhatsAppDialog = false
+                            val msg = "MBULI-MICROCRÉDITO: Simulação para ${clienteNomeInput.ifBlank { "Cliente" }}: Capital: ${KwanzaFormatters.formatAOA(state.principal)}, Prazo: ${state.prazoMeses} meses, Prestação: ${KwanzaFormatters.formatAOA(state.prestacaoMensal)}, Total a Liquidar: ${KwanzaFormatters.formatAOA(state.valorTotalLiquidar)}. Gestor: Nduwa Kayongo."
+                            LembreteHelper.enviarSms(context, clienteTelefoneInput, msg)
+                        }
+                    ) {
+                        Text("SMS Offline", color = DeepBlue)
+                    }
+                    TextButton(onClick = { showWhatsAppDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -82,7 +163,7 @@ fun CalculadoraInteligenteScreen(
                         }
                     }
                     Text(
-                        "Cálculo e simulação automática de juros, prestações e saldo devedor em tempo real.",
+                        "Cálculo inteligente de juros, prestações e saldo devedor em tempo real.",
                         color = Color.White.copy(alpha = 0.85f),
                         fontSize = 12.sp
                     )
@@ -171,14 +252,14 @@ fun CalculadoraInteligenteScreen(
                 ) {
                     Text("📊 Resultados Automáticos em Tempo Real", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ForestGreen)
 
-                    // Hero Saldo Devedor Display
+                    // Hero Saldo de Capital Display (Carteira)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = LightGreen,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Text("SALDO DEVEDOR ATUAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ForestGreen)
+                            Text("SALDO DE CAPITAL EM DÍVIDA (CARTEIRA)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ForestGreen)
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = KwanzaFormatters.formatAOA(state.saldoDevedorAtual),
@@ -195,11 +276,66 @@ fun CalculadoraInteligenteScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Liquidado: ${String.format("%.1f%%", state.percentualQuitado)} • ${state.parcelasPagas} de ${state.prazoMeses} parcelas pagas",
+                                text = "Capital Amortizado: ${KwanzaFormatters.formatAOA(state.capitalAmortizadoAteAgora)} (${String.format("%.1f%%", state.percentualQuitado)}) • ${state.parcelasPagas} de ${state.prazoMeses} parcelas pagas",
                                 fontSize = 10.sp,
                                 color = GrayText
                             )
                         }
+                    }
+
+                    // Card de Destaque Oficial: COMPOSIÇÃO DA PRESTAÇÃO
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF0FDF4),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ForestGreen.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Calculate, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("COMPOSIÇÃO DA PRESTAÇÃO", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = DeepBlue)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Prestação mensal = Capital mensal + Juros mensal",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ForestGreen
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${KwanzaFormatters.formatAOA(state.prestacaoMensal)} = ${KwanzaFormatters.formatAOA(state.capitalMensal)} + ${KwanzaFormatters.formatAOA(state.jurosMensal)}",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = DeepBlue
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            HorizontalDivider(color = ForestGreen.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("• Capital mensal: ${KwanzaFormatters.formatAOA(state.principal)} ÷ ${state.prazoMeses} = ${KwanzaFormatters.formatAOA(state.capitalMensal)}", fontSize = 10.sp, color = DeepBlue)
+                            Text("• Juros mensal: ${KwanzaFormatters.formatAOA(state.principal)} × ${state.taxaPercentual}% = ${KwanzaFormatters.formatAOA(state.jurosMensal)}", fontSize = 10.sp, color = DeepBlue)
+                            Text("• REGRA DE OURO: Somente o Capital Amortizado reduz a carteira. Os juros recebidos são receita financeira.", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = DarkGold)
+                        }
+                    }
+
+                    // Grid de Métricas Principais
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        MetricBox(
+                            title = "Capital Desembolsado",
+                            value = KwanzaFormatters.formatAOA(state.principal),
+                            color = DeepBlue,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MetricBox(
+                            title = "Prestação Mensal",
+                            value = KwanzaFormatters.formatAOA(state.prestacaoMensal),
+                            color = ForestGreen,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     Row(
@@ -207,14 +343,14 @@ fun CalculadoraInteligenteScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         MetricBox(
-                            title = "Prestação Mensal",
-                            value = KwanzaFormatters.formatAOA(state.prestacaoMensal),
-                            color = DeepBlue,
+                            title = "Capital Amortizado",
+                            value = KwanzaFormatters.formatAOA(state.capitalAmortizadoAteAgora),
+                            color = ForestGreen,
                             modifier = Modifier.weight(1f)
                         )
                         MetricBox(
-                            title = "Juros Totais",
-                            value = KwanzaFormatters.formatAOA(state.valorJurosTotal),
+                            title = "Juros Recebidos (Receita)",
+                            value = KwanzaFormatters.formatAOA(state.jurosRecebidosAteAgora),
                             color = DarkGold,
                             modifier = Modifier.weight(1f)
                         )
@@ -225,17 +361,53 @@ fun CalculadoraInteligenteScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         MetricBox(
-                            title = "Total a Liquidar",
-                            value = KwanzaFormatters.formatAOA(state.valorTotalLiquidar),
+                            title = "Total Recebido (Cap + Jur)",
+                            value = KwanzaFormatters.formatAOA(state.totalPagoAteAgora),
                             color = DeepBlue,
                             modifier = Modifier.weight(1f)
                         )
                         MetricBox(
-                            title = "Total Já Pago",
-                            value = KwanzaFormatters.formatAOA(state.totalPagoAteAgora),
-                            color = ForestGreen,
+                            title = "Saldo da Carteira (Dívida)",
+                            value = KwanzaFormatters.formatAOA(state.saldoDevedorAtual),
+                            color = WarningRed,
                             modifier = Modifier.weight(1f)
                         )
+                    }
+
+                    // Ações Oficiais: Baixar PDF e Enviar WhatsApp (Offline)
+                    Button(
+                        onClick = {
+                            val pdf = PdfGeneratorHelper.generateSimulacaoCreditoPdf(
+                                context = context,
+                                state = state,
+                                nomeCliente = clienteNomeInput.ifBlank { null }
+                            )
+                            if (pdf != null) {
+                                Toast.makeText(context, "PDF da simulação gerado com sucesso!", Toast.LENGTH_SHORT).show()
+                                PdfGeneratorHelper.openOrSharePdf(context, pdf)
+                            } else {
+                                Toast.makeText(context, "Erro ao gerar PDF da simulação.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("btn_baixar_simulador_pdf")
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Baixar Tabela Completa em PDF (Até Liquidação)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    OutlinedButton(
+                        onClick = { showWhatsAppDialog = true },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = DeepBlue),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ForestGreen),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("btn_enviar_simulacao_whatsapp")
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = null, tint = ForestGreen, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Enviar Simulação por WhatsApp / SMS (Offline)", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                     }
 
                     Row(
@@ -293,7 +465,7 @@ fun CalculadoraInteligenteScreen(
 
                         Column(horizontalAlignment = Alignment.End) {
                             Text(KwanzaFormatters.formatAOA(item.valorPrestacao), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DeepBlue)
-                            Text("Saldo Restante: ${KwanzaFormatters.formatAOA(item.saldoDevedorRestante)}", fontSize = 10.sp, color = ForestGreen, fontWeight = FontWeight.SemiBold)
+                            Text("Capital em Dívida: ${KwanzaFormatters.formatAOA(item.saldoDevedorRestante)}", fontSize = 10.sp, color = ForestGreen, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }

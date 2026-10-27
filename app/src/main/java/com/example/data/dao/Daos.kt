@@ -66,8 +66,14 @@ interface PagamentoDao {
     @Query("SELECT * FROM pagamentos ORDER BY dataPagamento DESC")
     fun getAllPagamentosFlow(): Flow<List<PagamentoEntity>>
 
+    @Query("SELECT * FROM pagamentos ORDER BY dataPagamento DESC")
+    suspend fun getAllPagamentos(): List<PagamentoEntity>
+
     @Query("SELECT * FROM pagamentos WHERE clienteId = :clienteId ORDER BY dataPagamento DESC")
     fun getPagamentosByClienteFlow(clienteId: Long): Flow<List<PagamentoEntity>>
+
+    @Query("SELECT * FROM pagamentos WHERE clienteId = :clienteId ORDER BY dataPagamento DESC")
+    suspend fun getPagamentosByCliente(clienteId: Long): List<PagamentoEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPagamento(pagamento: PagamentoEntity): Long

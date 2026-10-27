@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.ClienteEntity
 import com.example.data.model.CreditoEntity
 import com.example.repository.DashboardSummary
+import com.example.ui.components.DashboardPaymentTrendChart
 import com.example.ui.components.KwanzaFormatters
 import com.example.ui.components.MetricCard
 import com.example.ui.theme.*
@@ -36,7 +37,7 @@ fun DashboardScreen(
     onNavigateToAddCliente: () -> Unit,
     onNavigateToAlertas: () -> Unit,
     onNavigateToRelatorios: () -> Unit,
-    onNavigateToSimulador: () -> Unit,
+    onNavigateToCalculadora: () -> Unit,
     onSelectCliente: (Long) -> Unit
 ) {
     LazyColumn(
@@ -110,19 +111,24 @@ fun DashboardScreen(
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White
                         )
+                        Text(
+                            text = "Capital atualmente em dívida (Desembolsado − Amortizado)",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text("Total Desembolsado", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text("Capital Desembolsado", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                                 Text(
                                     KwanzaFormatters.formatAOA(summary.totalDesembolsado),
                                     fontSize = 13.sp,
@@ -131,12 +137,38 @@ fun DashboardScreen(
                                 )
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("Valor Recuperado", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text("Capital Amortizado", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                                 Text(
-                                    KwanzaFormatters.formatAOA(summary.totalRecuperado),
+                                    KwanzaFormatters.formatAOA(summary.capitalAmortizado),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = AccentGold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Juros Recebidos (Receita)", fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text(
+                                    KwanzaFormatters.formatAOA(summary.jurosRecebidos),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF6EE7B7) // Light mint green
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Total Recebido (Cap + Jur)", fontSize = 10.5.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text(
+                                    KwanzaFormatters.formatAOA(summary.totalRecebido),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
                                 )
                             }
                         }
@@ -184,11 +216,33 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     MetricCard(
-                        title = "📈 Recuperação",
-                        value = KwanzaFormatters.formatAOA(summary.totalRecuperado),
-                        subtitle = "Capital recuperado",
-                        icon = Icons.Default.TrendingUp,
+                        title = "📉 Capital Amortizado",
+                        value = KwanzaFormatters.formatAOA(summary.capitalAmortizado),
+                        subtitle = "Reduziu a carteira",
+                        icon = Icons.Default.TrendingDown,
                         iconColor = ForestGreen,
+                        modifier = Modifier.weight(1f)
+                    )
+                    MetricCard(
+                        title = "💵 Juros Recebidos",
+                        value = KwanzaFormatters.formatAOA(summary.jurosRecebidos),
+                        subtitle = "Receita acumulada",
+                        icon = Icons.Default.MonetizationOn,
+                        iconColor = DarkGold,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    MetricCard(
+                        title = "💳 Total Recebido",
+                        value = KwanzaFormatters.formatAOA(summary.totalRecebido),
+                        subtitle = "Capital + Juros",
+                        icon = Icons.Default.AccountBalance,
+                        iconColor = DeepBlue,
                         modifier = Modifier.weight(1f)
                     )
                     MetricCard(
@@ -231,6 +285,14 @@ fun DashboardScreen(
             }
         }
 
+        // Analytics Chart (Recharts style: Pagamentos, Recuperação & Tendência de Atrasos)
+        item {
+            DashboardPaymentTrendChart(
+                summary = summary,
+                clientesWithCredito = recentClientes
+            )
+        }
+
         // Quick Actions
         item {
             Card(
@@ -259,8 +321,8 @@ fun DashboardScreen(
                         )
                         QuickActionButton(
                             icon = Icons.Default.Calculate,
-                            label = "Simulador Risco",
-                            onClick = onNavigateToSimulador
+                            label = "Calculadora",
+                            onClick = onNavigateToCalculadora
                         )
                         QuickActionButton(
                             icon = Icons.Default.NotificationsActive,
@@ -272,6 +334,45 @@ fun DashboardScreen(
                             label = "Relatórios",
                             onClick = onNavigateToRelatorios
                         )
+                    }
+                }
+            }
+        }
+
+        // Continuous Monthly Tracking Banner
+        item {
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = DeepBlue),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToAlertas() }
+                    .testTag("card_acompanhamento_mensal_dashboard")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = AccentGold, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("ACOMPANHAMENTO MENSAL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = AccentGold, letterSpacing = 0.8.sp)
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text("Lembretes às 08:00 & 16:00 Ativos", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Acompanhando reembolsos até à liquidação total.", fontSize = 10.sp, color = Color.White.copy(alpha = 0.85f))
+                    }
+                    Button(
+                        onClick = onNavigateToAlertas,
+                        colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text("Ver Todos", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

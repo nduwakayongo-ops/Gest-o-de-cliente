@@ -44,6 +44,9 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
                 clientesLiquidadosCount = 0,
                 clientesEmAtrasoCount = 0,
                 totalDesembolsado = 0.0,
+                capitalAmortizado = 0.0,
+                jurosRecebidos = 0.0,
+                totalRecebido = 0.0,
                 totalRecuperado = 0.0,
                 valorEmAtraso = 0.0,
                 riscoPercentual = 0.0,
@@ -256,9 +259,18 @@ class CarteiraViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun registrarPagamento(pagamento: PagamentoEntity, onComplete: () -> Unit) {
+    fun registrarPagamento(pagamento: PagamentoEntity, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             repository.insertPagamento(pagamento)
+            // Immediately interrupt active notification and cancel/reschedule reminders
+            val creditoAtualizado = repository.getCreditoById(pagamento.creditoId)
+            val isLiquidado = creditoAtualizado?.estado == "Liquidado" ||
+                    (creditoAtualizado != null && creditoAtualizado.prestacoesPagas >= creditoAtualizado.quantidadePrestacoes)
+            com.example.util.NotificationSchedulerHelper.onPagamentoConfirmado(
+                getApplication(),
+                pagamento.creditoId,
+                isLiquidado
+            )
             if (isInternetConnected.value) {
                 com.example.util.AutoBackupManager.executeBackup(getApplication())
             }

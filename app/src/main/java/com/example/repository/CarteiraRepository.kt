@@ -7,17 +7,20 @@ import kotlinx.coroutines.flow.combine
 import java.util.Calendar
 
 data class DashboardSummary(
-    val carteiraAtiva: Double,
+    val carteiraAtiva: Double,        // Saldo da Carteira de Crédito = Capital Desembolsado - Capital Amortizado
     val totalClientes: Int,
     val clientesAtivosCount: Int,
     val clientesLiquidadosCount: Int,
     val clientesEmAtrasoCount: Int,
-    val totalDesembolsado: Double,
-    val totalRecuperado: Double,
+    val totalDesembolsado: Double,    // Capital Desembolsado (total concedido)
+    val capitalAmortizado: Double,    // Capital Amortizado (capital recuperado que reduz a carteira)
+    val jurosRecebidos: Double,       // Juros Recebidos (receita acumulada que NÃO reduz a carteira)
+    val totalRecebido: Double,        // Capital Amortizado + Juros Recebidos
     val valorEmAtraso: Double,
     val riscoPercentual: Double,
     val prestacoesVencendoCount: Int,
-    val notificacoesCount: Int
+    val notificacoesCount: Int,
+    val totalRecuperado: Double = totalRecebido // Mantido para compatibilidade com chamadas legadas
 )
 
 class CarteiraRepository(
@@ -45,6 +48,8 @@ class CarteiraRepository(
         return clienteId
     }
 
+    suspend fun getCreditoById(creditoId: Long): CreditoEntity? = creditoDao.getCreditoById(creditoId)
+
     suspend fun updateCliente(cliente: ClienteEntity) = clienteDao.updateCliente(cliente)
     suspend fun updateCredito(credito: CreditoEntity) = creditoDao.updateCredito(credito)
     suspend fun insertPagamento(pagamento: PagamentoEntity) {
@@ -53,15 +58,19 @@ class CarteiraRepository(
         val credito = creditoDao.getCreditoById(pagamento.creditoId)
         if (credito != null) {
             val novasPagas = credito.prestacoesPagas + 1
-            val novoEstado = if (novasPagas >= credito.quantidadePrestacoes) "Liquidado" else credito.estado
-            val novoAtrasoVal = if (novoEstado == "Liquidado") 0.0 else (credito.valorEmAtraso - pagamento.valorPago).coerceAtLeast(0.0)
+            val isLiquidadoTotal = novasPagas >= credito.quantidadePrestacoes
+            val novoAtrasoVal = if (isLiquidadoTotal) 0.0 else (credito.valorEmAtraso - pagamento.valorPago).coerceAtLeast(0.0)
             val novoAtrasoDias = if (novoAtrasoVal <= 0.0) 0 else credito.diasEmAtraso
+            val novoEstado = when {
+                isLiquidadoTotal -> "Liquidado"
+                novoAtrasoVal > 0.0 -> "Em atraso"
+                else -> "Ativo"
+            }
             
-            val novoProximoVencimento = if (novoEstado == "Liquidado") 0L else {
-                val currentBase = if (credito.proximoVencimento > 0) credito.proximoVencimento else credito.dataPrimeiroPagamento
+            val novoProximoVencimento = if (isLiquidadoTotal) 0L else {
                 val cal = Calendar.getInstance().apply {
-                    timeInMillis = currentBase
-                    add(Calendar.MONTH, 1)
+                    timeInMillis = if (credito.dataPrimeiroPagamento > 0) credito.dataPrimeiroPagamento else System.currentTimeMillis()
+                    add(Calendar.MONTH, novasPagas)
                 }
                 cal.timeInMillis
             }
@@ -98,11 +107,33 @@ class CarteiraRepository(
     ) { clientes, creditos, pagamentos ->
         val totalClientes = clientes.size
 
+        // 1. Capital Desembolsado: Soma do capital efetivamente concedido
         val totalDesembolsado = creditos.sumOf { it.valorDesembolsado }
-        val totalRecuperado = pagamentos.sumOf { it.valorPago }
 
-        // Formula: Carteira Ativa = Total Desembolsado - Valor Recuperado
-        val carteiraAtiva = (totalDesembolsado - totalRecuperado).coerceAtLeast(0.0)
+        // 2. Capital Amortizado: Apenas a fração de capital amortizado das prestações pagas
+        // Fórmula: Capital mensal = valorDesembolsado / quantidadePrestacoes
+        // Capital amortizado = Capital mensal * prestacoesPagas
+        val capitalAmortizado = creditos.sumOf { credito ->
+            val n = credito.quantidadePrestacoes
+            val pagas = credito.prestacoesPagas.coerceIn(0, n)
+            if (n > 0) (credito.valorDesembolsado / n) * pagas else 0.0
+        }
+
+        // 3. Juros Recebidos: Receita financeira apurada (NÃO reduz a carteira!)
+        // Fórmula: Juros mensal = valorDesembolsado * (taxaPercentual / 100)
+        // Juros recebidos = Juros mensal * prestacoesPagas
+        val jurosRecebidos = creditos.sumOf { credito ->
+            val n = credito.quantidadePrestacoes
+            val pagas = credito.prestacoesPagas.coerceIn(0, n)
+            (credito.valorDesembolsado * (credito.taxaPercentual / 100.0)) * pagas
+        }
+
+        // 4. Total Recebido = Capital Amortizado + Juros Recebidos
+        val totalRecebido = capitalAmortizado + jurosRecebidos
+
+        // 5. REGRA DE OURO: Saldo da Carteira de Crédito = Capital Desembolsado - Capital Amortizado
+        // Juros recebidos NUNCA reduzem a carteira de crédito.
+        val carteiraAtiva = (totalDesembolsado - capitalAmortizado).coerceAtLeast(0.0)
 
         val valorEmAtraso = creditos.filter { it.estado == "Em atraso" || it.valorEmAtraso > 0 }
             .sumOf { it.valorEmAtraso }
@@ -136,11 +167,14 @@ class CarteiraRepository(
             clientesLiquidadosCount = clientesLiquidadosCount,
             clientesEmAtrasoCount = clientesEmAtrasoCount,
             totalDesembolsado = totalDesembolsado,
-            totalRecuperado = totalRecuperado,
+            capitalAmortizado = capitalAmortizado,
+            jurosRecebidos = jurosRecebidos,
+            totalRecebido = totalRecebido,
             valorEmAtraso = valorEmAtraso,
             riscoPercentual = riscoPercentual,
             prestacoesVencendoCount = prestacoesVencendoCount,
-            notificacoesCount = notificacoesCount
+            notificacoesCount = notificacoesCount,
+            totalRecuperado = totalRecebido
         )
     }
 }

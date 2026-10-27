@@ -7,10 +7,12 @@ import java.util.*
 object KwanzaFormatters {
 
     fun formatAOA(amount: Double, showDecimals: Boolean = false): String {
-        val formatter = NumberFormat.getInstance(Locale.forLanguageTag("pt-AO")).apply {
-            minimumFractionDigits = if (showDecimals) 2 else 0
-            maximumFractionDigits = 2
+        val symbols = java.text.DecimalFormatSymbols(Locale.forLanguageTag("pt-AO")).apply {
+            groupingSeparator = '.'
+            decimalSeparator = ','
         }
+        val pattern = if (showDecimals) "#,##0.00" else "#,##0"
+        val formatter = java.text.DecimalFormat(pattern, symbols)
         return "AOA ${formatter.format(amount)}"
     }
 

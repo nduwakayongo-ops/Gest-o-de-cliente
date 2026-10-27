@@ -1,7 +1,11 @@
 package com.example
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.fragment.app.FragmentActivity
@@ -30,14 +34,33 @@ class MainActivity : FragmentActivity() {
 
     private val viewModel: CarteiraViewModel by viewModels()
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Schedule daily notifications at 08:00 and 17:00
-        com.example.util.NotificationSchedulerHelper.scheduleDailyAlarms(applicationContext)
+        // Schedule daily notifications and individual 5-day / due date alarms
+        com.example.util.NotificationSchedulerHelper.rescheduleAllAlarmsAndWorkers(applicationContext)
 
         setContent {
+            // Request Notification Permission for Android 13+ (API 33+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { isGranted ->
+                    if (isGranted) {
+                        com.example.util.NotificationSchedulerHelper.rescheduleAllAlarmsAndWorkers(applicationContext)
+                    }
+                }
+                LaunchedEffect(Unit) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+
             val configuracao by viewModel.configuracao.collectAsStateWithLifecycle()
             val systemInDark = androidx.compose.foundation.isSystemInDarkTheme()
             val isDarkTheme = when (configuracao?.tema) {
@@ -47,9 +70,11 @@ class MainActivity : FragmentActivity() {
             }
 
             GestaoClientesTheme(darkTheme = isDarkTheme) {
+                val incomingClientId = intent?.getLongExtra("CLIENTE_ID", -1L)?.takeIf { it != -1L }
                 MainAppScreen(
                     viewModel = viewModel,
                     isDarkTheme = isDarkTheme,
+                    initialClienteId = incomingClientId,
                     onToggleTheme = {
                         val nextTema = if (isDarkTheme) "Claro" else "Escuro"
                         val currentConf = configuracao ?: com.example.data.model.ConfiguracaoEntity()
@@ -66,7 +91,6 @@ enum class ScreenTab(val title: String, val route: String) {
     CLIENTES("Clientes", "clientes"),
     CALCULADORA("Calculadora", "calculadora"),
     CALENDARIO("Calendário", "calendario"),
-    ESTATISTICAS("Simulador", "estatisticas"),
     RELATORIOS("Relatórios", "relatorios"),
     ALERTAS("Alertas", "alertas"),
     CONFIGURACOES("Configurações", "configuracoes"),
@@ -78,6 +102,7 @@ enum class ScreenTab(val title: String, val route: String) {
 fun MainAppScreen(
     viewModel: CarteiraViewModel,
     isDarkTheme: Boolean = false,
+    initialClienteId: Long? = null,
     onToggleTheme: () -> Unit = {}
 ) {
     val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
@@ -94,8 +119,8 @@ fun MainAppScreen(
     val selectedBankFilter by viewModel.selectedBankFilter.collectAsStateWithLifecycle()
     val sortOption by viewModel.sortOption.collectAsStateWithLifecycle()
 
-    var currentTab by remember { mutableStateOf(ScreenTab.DASHBOARD) }
-    var selectedClienteId by remember { mutableStateOf<Long?>(null) }
+    var currentTab by remember { mutableStateOf(if (initialClienteId != null) ScreenTab.CLIENTE_DETAIL else ScreenTab.DASHBOARD) }
+    var selectedClienteId by remember { mutableStateOf(initialClienteId) }
     var clienteToEdit by remember { mutableStateOf<ClienteEntity?>(null) }
 
     if (!isAuthenticated && configuracao?.pinSeguranca != null) {
@@ -185,15 +210,6 @@ fun MainAppScreen(
                     )
 
                     NavigationBarItem(
-                        selected = currentTab == ScreenTab.ESTATISTICAS,
-                        onClick = { currentTab = ScreenTab.ESTATISTICAS },
-                        icon = { Icon(Icons.Default.BarChart, contentDescription = "Estatísticas") },
-                        label = { Text("Simulador", fontSize = 10.sp) },
-                        colors = NavigationBarItemDefaults.colors(selectedIconColor = DeepBlue, indicatorColor = DeepBlue.copy(alpha = 0.12f)),
-                        modifier = Modifier.testTag("nav_item_estatisticas")
-                    )
-
-                    NavigationBarItem(
                         selected = currentTab == ScreenTab.RELATORIOS || currentTab == ScreenTab.CONFIGURACOES,
                         onClick = { currentTab = ScreenTab.RELATORIOS },
                         icon = { Icon(Icons.Default.PictureAsPdf, contentDescription = "Relatórios") },
@@ -219,7 +235,7 @@ fun MainAppScreen(
                     onNavigateToAddCliente = { currentTab = ScreenTab.ADD_CLIENTE },
                     onNavigateToAlertas = { currentTab = ScreenTab.ALERTAS },
                     onNavigateToRelatorios = { currentTab = ScreenTab.RELATORIOS },
-                    onNavigateToSimulador = { currentTab = ScreenTab.ESTATISTICAS },
+                    onNavigateToCalculadora = { currentTab = ScreenTab.CALCULADORA },
                     onSelectCliente = { id ->
                         selectedClienteId = id
                         currentTab = ScreenTab.CLIENTE_DETAIL
@@ -273,13 +289,10 @@ fun MainAppScreen(
                     }
                 )
 
-                ScreenTab.ESTATISTICAS -> EstatisticasScreen(
-                    summary = summary
-                )
-
                 ScreenTab.RELATORIOS -> RelatoriosScreen(
                     summary = summary,
-                    clientesWithCredito = allClientesWithCredito
+                    clientesWithCredito = allClientesWithCredito,
+                    pagamentos = allPagamentosList
                 )
 
                 ScreenTab.ALERTAS -> AlertasScreen(
@@ -287,6 +300,19 @@ fun MainAppScreen(
                     onSelectCliente = { id ->
                         selectedClienteId = id
                         currentTab = ScreenTab.CLIENTE_DETAIL
+                    },
+                    onConfirmarReembolso = { cliente, credito ->
+                        viewModel.registrarPagamento(
+                            com.example.data.model.PagamentoEntity(
+                                creditoId = credito.id,
+                                clienteId = cliente.id,
+                                valorPago = credito.prestacaoMensal,
+                                dataPagamento = System.currentTimeMillis(),
+                                numeroPrestacao = credito.prestacoesPagas + 1,
+                                comprovativoRef = "REEMB-${System.currentTimeMillis().toString().takeLast(6)}",
+                                observacao = "Reembolso confirmado via Acompanhamento Mensal"
+                            )
+                        )
                     },
                     onSpeakCliente = { cliente, credito -> viewModel.speakNotificationForCliente(cliente, credito) },
                     onSpeakAll = { viewModel.speakAllAlerts(allClientesWithCredito) },

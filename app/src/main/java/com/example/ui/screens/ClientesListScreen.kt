@@ -101,24 +101,29 @@ fun ClientesListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color.White)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Pesquisar por nome, banco, tel, empresa, nº...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = DeepBlue) },
+                    placeholder = { Text("Pesquisar por nome, banco, tel...", fontSize = 12.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = DeepBlue, modifier = Modifier.size(13.dp)) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { onSearchQueryChange("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Limpar")
+                            IconButton(
+                                onClick = { onSearchQueryChange("") },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpar", modifier = Modifier.size(16.dp))
                             }
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(46.dp)
                         .testTag("search_cliente_input"),
-                    shape = RoundedCornerShape(12.dp),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = DeepBlue,
                         unfocusedBorderColor = GraySurface
@@ -126,7 +131,7 @@ fun ClientesListScreen(
                     singleLine = true
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Sort and Bank Selectors
                 Row(

@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -340,8 +341,29 @@ fun ClienteDetailScreen(
 
             // Tab Content
             when (selectedTab) {
-                0 -> VisaoGeralTab(cliente, credito)
-                1 -> PagamentosTab(pagamentos, onDeletePagamento = { pagamentoToDelete = it })
+                0 -> VisaoGeralTab(
+                    cliente = cliente,
+                    credito = credito,
+                    onGeneratePdf = {
+                        val pdfFile = com.example.util.PdfGeneratorHelper.generateExtratoClientePdf(
+                            context = context,
+                            cliente = cliente,
+                            credito = credito,
+                            pagamentos = pagamentos,
+                            cobrancas = cobrancas
+                        )
+                        if (pdfFile != null) {
+                            com.example.util.PdfGeneratorHelper.openOrSharePdf(context, pdfFile)
+                        } else {
+                            Toast.makeText(context, "Erro ao gerar PDF do cliente.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+                1 -> PagamentosTab(
+                    pagamentos = pagamentos,
+                    credito = credito,
+                    onDeletePagamento = { pagamentoToDelete = it }
+                )
                 2 -> CobrancasTab(cobrancas, onDeleteCobranca = { cobrancaToDelete = it })
             }
         }
@@ -401,13 +423,58 @@ fun ClienteDetailScreen(
 }
 
 @Composable
-fun VisaoGeralTab(cliente: ClienteEntity, credito: CreditoEntity?) {
+fun VisaoGeralTab(
+    cliente: ClienteEntity,
+    credito: CreditoEntity?,
+    onGeneratePdf: () -> Unit = {}
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Prominent PDF Button Card
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DeepBlue),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Icon(
+                            Icons.Default.PictureAsPdf,
+                            contentDescription = null,
+                            tint = AccentGold,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("Extrato de Conta (PDF)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Documento oficial com histórico", fontSize = 11.sp, color = Color.White.copy(alpha = 0.8f))
+                        }
+                    }
+
+                    Button(
+                        onClick = onGeneratePdf,
+                        colors = ButtonDefaults.buttonColors(containerColor = ForestGreen),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text("Gerar PDF", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
         // Dados do Crédito Card
         item {
             Card(
@@ -425,11 +492,19 @@ fun VisaoGeralTab(cliente: ClienteEntity, credito: CreditoEntity?) {
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    DetailRow("Valor Desembolsado", KwanzaFormatters.formatAOA(credito?.valorDesembolsado ?: 0.0))
-                    DetailRow("Valor Líquido", KwanzaFormatters.formatAOA(credito?.valorLiquido ?: 0.0))
-                    DetailRow("Taxa de Juros", "${credito?.taxaPercentual ?: 0.0}%")
-                    DetailRow("Valor dos Juros", KwanzaFormatters.formatAOA(credito?.valorJuros ?: 0.0))
-                    DetailRow("Prestação Mensal", KwanzaFormatters.formatAOA(credito?.prestacaoMensal ?: 0.0), isBold = true)
+                    val capMensal = if (credito != null && credito.quantidadePrestacoes > 0) credito.valorDesembolsado / credito.quantidadePrestacoes else 0.0
+                    val jurMensal = if (credito != null) credito.valorDesembolsado * (credito.taxaPercentual / 100.0) else 0.0
+                    val capAmort = capMensal * (credito?.prestacoesPagas ?: 0)
+                    val jurReceb = jurMensal * (credito?.prestacoesPagas ?: 0)
+                    val saldoCarteira = ((credito?.valorDesembolsado ?: 0.0) - capAmort).coerceAtLeast(0.0)
+
+                    DetailRow("Capital Desembolsado", KwanzaFormatters.formatAOA(credito?.valorDesembolsado ?: 0.0), isBold = true)
+                    DetailRow("Capital Mensal (Amortização)", KwanzaFormatters.formatAOA(capMensal))
+                    DetailRow("Juros Mensal (Receita)", KwanzaFormatters.formatAOA(jurMensal))
+                    DetailRow("Prestação Mensal (Cap + Jur)", KwanzaFormatters.formatAOA(credito?.prestacaoMensal ?: 0.0), isBold = true, color = DeepBlue)
+                    DetailRow("Capital Amortizado Acumulado", KwanzaFormatters.formatAOA(capAmort), color = ForestGreen, isBold = true)
+                    DetailRow("Juros Recebidos Acumulados", KwanzaFormatters.formatAOA(jurReceb), color = DarkGold)
+                    DetailRow("Saldo de Capital (Carteira)", KwanzaFormatters.formatAOA(saldoCarteira), color = if (saldoCarteira > 0) DeepBlue else ForestGreen, isBold = true)
                     DetailRow("Prestações Pagas / Total", "${credito?.prestacoesPagas ?: 0} / ${credito?.quantidadePrestacoes ?: 0}")
                     DetailRow("Data do Desembolso", KwanzaFormatters.formatDate(credito?.dataDesembolso ?: 0L))
                     DetailRow("Início do Reembolso", KwanzaFormatters.formatDate(credito?.dataPrimeiroPagamento ?: 0L))
@@ -437,8 +512,12 @@ fun VisaoGeralTab(cliente: ClienteEntity, credito: CreditoEntity?) {
                     DetailRow("Próximo Vencimento", KwanzaFormatters.formatDate(credito?.proximoVencimento ?: 0L))
                     DetailRow("Estado do Crédito", credito?.estado ?: "N/A", isStatus = true)
                     if ((credito?.diasEmAtraso ?: 0) > 0) {
-                        DetailRow("Valor em Atraso", KwanzaFormatters.formatAOA(credito?.valorEmAtraso ?: 0.0), color = WarningRed)
-                        DetailRow("Dias em Atraso", "${credito?.diasEmAtraso} dias", color = WarningRed)
+                        val mora = com.example.util.MoraCalculatorHelper.calcular(credito = credito!!, diasAtrasoManual = credito.diasEmAtraso)
+                        DetailRow("Valor da Prestação em Atraso", KwanzaFormatters.formatAOA(mora.valorEmAtraso), color = WarningRed, isBold = true)
+                        DetailRow("Dias em Atraso", "${credito.diasEmAtraso} dias", color = WarningRed)
+                        DetailRow("Mora Diária (4% juros contratuais)", "${KwanzaFormatters.formatAOA(mora.jurosMoraDiarios)}/dia", color = DarkGold)
+                        DetailRow("Mora Acumulada", KwanzaFormatters.formatAOA(mora.jurosMoraAcumulados), color = DarkGold, isBold = true)
+                        DetailRow("Total Exigível com Mora", KwanzaFormatters.formatAOA(mora.totalExigivel), color = WarningRed, isBold = true)
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -509,6 +588,7 @@ fun VisaoGeralTab(cliente: ClienteEntity, credito: CreditoEntity?) {
 @Composable
 fun PagamentosTab(
     pagamentos: List<PagamentoEntity>,
+    credito: CreditoEntity? = null,
     onDeletePagamento: (PagamentoEntity) -> Unit = {}
 ) {
     if (pagamentos.isEmpty()) {
@@ -516,55 +596,114 @@ fun PagamentosTab(
             Text("Nenhum pagamento registrado ainda.", color = GrayText)
         }
     } else {
+        val nTotal = credito?.quantidadePrestacoes ?: 1
+        val capMensal = (credito?.valorDesembolsado ?: 0.0) / nTotal.coerceAtLeast(1)
+        val jurMensal = (credito?.valorDesembolsado ?: 0.0) * ((credito?.taxaPercentual ?: 0.0) / 100.0)
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // Header summary card of Gold Rule
+            item {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFFF0FDF4),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ForestGreen.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "DIVISÃO AUTOMÁTICA DE CADA REEMBOLSO",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DeepBlue
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Prestação = Capital Amortizado (reduz a carteira) + Juros Recebidos (receita).",
+                            fontSize = 10.sp,
+                            color = ForestGreen,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
             items(pagamentos) { pag ->
+                val amortizacao = if (credito != null) capMensal else (pag.valorPago * 0.5)
+                val juros = if (credito != null) jurMensal else (pag.valorPago * 0.5)
+                val saldoDevedorApos = if (credito != null) {
+                    ((credito.valorDesembolsado) - (capMensal * pag.numeroPrestacao)).coerceAtLeast(0.0)
+                } else 0.0
+
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Prestação nº ${pag.numeroPrestacao}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = "Ref: ${pag.comprovativoRef} • ${KwanzaFormatters.formatDate(pag.dataPagamento)}",
-                                fontSize = 11.sp,
-                                color = GrayText
-                            )
-                            if (pag.observacao.isNotEmpty()) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = pag.observacao,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    text = "Prestação nº ${pag.numeroPrestacao} (Reembolso)",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = DeepBlue
                                 )
+                                Text(
+                                    text = "Data: ${KwanzaFormatters.formatDate(pag.dataPagamento)} • Ref: ${pag.comprovativoRef}",
+                                    fontSize = 11.sp,
+                                    color = GrayText
+                                )
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = KwanzaFormatters.formatAOA(pag.valorPago),
+                                    fontWeight = FontWeight.Bold,
+                                    color = DeepBlue,
+                                    fontSize = 14.sp
+                                )
+                                IconButton(onClick = { onDeletePagamento(pag) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Excluir Pagamento", tint = WarningRed, modifier = Modifier.size(18.dp))
+                                }
                             }
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = KwanzaFormatters.formatAOA(pag.valorPago),
-                                fontWeight = FontWeight.Bold,
-                                color = ForestGreen,
-                                fontSize = 14.sp
-                            )
-                            IconButton(onClick = { onDeletePagamento(pag) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Excluir Pagamento", tint = WarningRed, modifier = Modifier.size(20.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = GrayBackground)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Capital Amortizado:", fontSize = 10.sp, color = GrayText)
+                                Text(KwanzaFormatters.formatAOA(amortizacao), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ForestGreen)
                             }
+                            Column {
+                                Text("Juros Recebidos:", fontSize = 10.sp, color = GrayText)
+                                Text(KwanzaFormatters.formatAOA(juros), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkGold)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Capital em Dívida:", fontSize = 10.sp, color = GrayText)
+                                Text(KwanzaFormatters.formatAOA(saldoDevedorApos), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DeepBlue)
+                            }
+                        }
+
+                        if (pag.observacao.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Obs: ${pag.observacao}",
+                                fontSize = 10.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }

@@ -31,16 +31,16 @@ data class CreditoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val clienteId: Long,
     val valorDesembolsado: Double,
-    val valorLiquido: Double,
+    val valorLiquido: Double = 0.0,
     val taxaPercentual: Double,
-    val valorJuros: Double,
+    val valorJuros: Double = 0.0,
     val prestacaoMensal: Double,
     val quantidadePrestacoes: Int,
     val prestacoesPagas: Int = 0,
-    val dataDesembolso: Long, // timestamp
-    val dataPrimeiroPagamento: Long,
-    val dataUltimoPagamento: Long,
-    val diasCredito: Int,
+    val dataDesembolso: Long = 0L, // timestamp
+    val dataPrimeiroPagamento: Long = 0L,
+    val dataUltimoPagamento: Long = 0L,
+    val diasCredito: Int = 0,
     val estado: String = "Ativo", // Ativo, Liquidado, Renegociado, Em atraso, Cancelado
     val proximoVencimento: Long = 0L,
     val valorEmAtraso: Double = 0.0,

@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
+import androidx.room.migration.Migration
+
 @Database(
     entities = [
         ClienteEntity::class,
@@ -20,7 +22,7 @@ import java.util.Calendar
         CobrancaEntity::class,
         ConfiguracaoEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,6 +37,17 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE configuracoes ADD COLUMN canalNotificacaoInterna INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE configuracoes ADD COLUMN canalSmsCliente INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE configuracoes ADD COLUMN canalWhatsAppCliente INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE configuracoes ADD COLUMN telefoneInstituicao TEXT NOT NULL DEFAULT '+244 923 000 000'")
+                db.execSQL("ALTER TABLE configuracoes ADD COLUMN modeloMensagemAntesVencimento TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE configuracoes ADD COLUMN modeloMensagemAposVencimento TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -43,6 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "nduwa_kayongo_credit_db"
                 )
                     .addCallback(DatabaseCallback())
+                    .addMigrations(MIGRATION_3_4)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance
